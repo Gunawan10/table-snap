@@ -14,6 +14,8 @@ await build({
   target: 'chrome120'
 });
 
+await cp('src/content/card-position-fix.js', 'dist/content/card-position-fix.js');
+
 await build({
   entryPoints: ['src/background/service-worker.js'],
   outfile: 'dist/background/service-worker.js',
