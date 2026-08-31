@@ -15,6 +15,7 @@ await build({
 });
 
 await cp('src/content/card-position-fix.js', 'dist/content/card-position-fix.js');
+await cp('src/content/image-background-fix.js', 'dist/content/image-background-fix.js');
 
 await build({
   entryPoints: ['src/background/service-worker.js'],
