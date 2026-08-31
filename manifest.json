@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "TableSnap",
+  "version": "1.0.0",
+  "description": "Export HTML tables as CSV, Markdown, or PNG in one click.",
+  "permissions": ["storage", "downloads"],
+  "action": {
+    "default_title": "TableSnap Settings",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
