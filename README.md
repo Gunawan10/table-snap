@@ -178,4 +178,4 @@ TableSnap currently focuses on exporting tables available directly on web pages.
 
 ## License
 
-No license has been specified yet.
+Licensed under the MIT License. See [`LICENSE`](LICENSE) for details.
