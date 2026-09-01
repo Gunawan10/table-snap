@@ -1,10 +1,19 @@
 import { build } from 'esbuild';
 import { cp, mkdir, rm } from 'node:fs/promises';
+import sharp from 'sharp';
 
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist/content', { recursive: true });
 await mkdir('dist/background', { recursive: true });
 await mkdir('dist/popup', { recursive: true });
+await mkdir('dist/icons', { recursive: true });
+
+for (const size of [16, 32, 48, 128]) {
+  await sharp('src/assets/icon.svg')
+    .resize(size, size)
+    .png()
+    .toFile(`dist/icons/icon${size}.png`);
+}
 
 await build({
   entryPoints: ['src/content/content-script.js'],
