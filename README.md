@@ -98,7 +98,6 @@ TableSnap is designed to work locally.
 - No account required.
 - No backend server.
 - No external API required.
-- No OCR.
 - No AI processing.
 - Table contents are not uploaded by TableSnap.
 
@@ -175,9 +174,7 @@ npm run build
 
 ## Current Scope
 
-TableSnap focuses on real HTML tables available in the page DOM.
-
-It does not use OCR to extract tables from screenshots, images, PDFs, or canvas-rendered content.
+TableSnap currently focuses on exporting tables available directly on web pages.
 
 ## License
 
