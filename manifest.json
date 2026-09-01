@@ -31,7 +31,7 @@
         "content/card-copy-actions.js",
         "content/card-position-fix.js"
       ],
-      "css": ["content/content.css"],
+      "css": ["content/content.css", "content/save-loading.css"],
       "run_at": "document_idle"
     }
   ]
