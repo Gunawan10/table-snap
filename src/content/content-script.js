@@ -185,6 +185,12 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function waitForPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
 function getStatusIcon(button) {
   let icon = button.querySelector('.tablesnap-download-icon');
   if (!icon) {
@@ -247,6 +253,7 @@ function createExportCard(table) {
     setSaveState(card, button, 'loading', format);
 
     try {
+      if (format === 'image') await waitForPaint();
       await exportTable(table, format);
       const elapsed = performance.now() - startedAt;
       if (elapsed < MIN_SAVE_STATE_MS) await wait(MIN_SAVE_STATE_MS - elapsed);
