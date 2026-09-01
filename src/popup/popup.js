@@ -22,6 +22,13 @@ function applyAccent(accentColor) {
   document.body.dataset.accent = accentColor;
 }
 
+function applyEnabledState(enabled) {
+  document.body.dataset.extensionEnabled = String(Boolean(enabled));
+  form.querySelectorAll('select, input, button').forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
+
 async function load() {
   const settings = await chrome.storage.local.get(DEFAULTS);
   enabledToggle.checked = Boolean(settings.enabled);
@@ -36,10 +43,13 @@ async function load() {
   });
   applyTheme(settings.theme);
   applyAccent(settings.accentColor);
+  applyEnabledState(settings.enabled);
 }
 
 enabledToggle.addEventListener('change', async () => {
-  await chrome.storage.local.set({ enabled: enabledToggle.checked });
+  const enabled = enabledToggle.checked;
+  applyEnabledState(enabled);
+  await chrome.storage.local.set({ enabled });
 });
 
 form.addEventListener('change', async (event) => {
