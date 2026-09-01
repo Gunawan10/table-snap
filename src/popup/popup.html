@@ -9,28 +9,35 @@
 <body data-theme="system">
   <main class="popup-shell">
     <header>
-      <div class="brand-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="1"/><path d="M5 11h14M9 7v11M15 7v11M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg></div>
-      <div><h1>TableSnap</h1><p>Export tables in one click</p></div>
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="1"/><path d="M5 11h14M9 7v11M15 7v11M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg></div>
+        <div><h1>TableSnap</h1><p>Export tables in one click</p></div>
+      </div>
+      <label class="enable-toggle" title="Enable extension">
+        <span>Enable</span>
+        <input id="enabled" name="enabled" type="checkbox" checked>
+        <span class="switch" aria-hidden="true"></span>
+      </label>
     </header>
 
     <form id="settings-form">
       <section>
         <h2><span>GENERAL</span></h2>
-        <label><span class="setting-icon purple">◉</span><span class="copy"><b>Icon visibility</b><small>When export icon appears</small></span><select name="iconVisibility"><option value="hover">On hover</option><option value="always">Always</option></select></label>
-        <label><span class="setting-icon purple">▦</span><span class="copy"><b>Icon position</b><small>Where icon is placed</small></span><select name="iconPosition"><option value="top-right">Top right</option><option value="top-left">Top left</option></select></label>
-        <label><span class="setting-icon purple">□</span><span class="copy"><b>Icon size</b><small>Size of export icon</small></span><select name="iconSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
+        <label class="setting-row"><span class="setting-icon">◉</span><span class="copy"><b>Icon visibility</b><small>When export icon appears</small></span><select name="iconVisibility"><option value="hover">On hover</option><option value="always">Always</option></select></label>
+        <label class="setting-row"><span class="setting-icon">▦</span><span class="copy"><b>Icon position</b><small>Where icon is placed</small></span><select name="iconPosition"><option value="top-right">Top right</option><option value="top-left">Top left</option></select></label>
+        <label class="setting-row"><span class="setting-icon">□</span><span class="copy"><b>Icon size</b><small>Size of export icon</small></span><select name="iconSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
       </section>
 
       <section>
         <h2><span>EXPORT</span></h2>
-        <label><span class="setting-icon green">▤</span><span class="copy"><b>Default format</b><small>Format preselected in menu</small></span><select name="defaultFormat"><option value="csv">CSV</option><option value="markdown">Markdown</option><option value="image">Image</option></select></label>
-        <label><span class="setting-icon green">‚</span><span class="copy"><b>CSV delimiter</b><small>Delimiter used in CSV files</small></span><select name="csvDelimiter"><option value=",">Comma (,)</option><option value=";">Semicolon (;)</option><option value="&#9;">Tab</option></select></label>
-        <label><span class="setting-icon blue">▧</span><span class="copy"><b>Image scale</b><small>Higher scale = better quality</small></span><select name="imageScale"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></label>
+        <label class="setting-row"><span class="setting-icon">▤</span><span class="copy"><b>Default format</b><small>Format preselected in menu</small></span><select name="defaultFormat"><option value="csv">CSV</option><option value="markdown">Markdown</option><option value="image">Image</option></select></label>
+        <label class="setting-row"><span class="setting-icon">‚</span><span class="copy"><b>CSV delimiter</b><small>Delimiter used in CSV files</small></span><select name="csvDelimiter"><option value=",">Comma (,)</option><option value=";">Semicolon (;)</option><option value="&#9;">Tab</option></select></label>
+        <label class="setting-row"><span class="setting-icon">▧</span><span class="copy"><b>Image scale</b><small>Higher scale = better quality</small></span><select name="imageScale"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option></select></label>
       </section>
 
       <section>
         <h2><span>APPEARANCE</span></h2>
-        <label><span class="setting-icon purple">◌</span><span class="copy"><b>Theme</b><small>Match your preference</small></span><select name="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <label class="setting-row"><span class="setting-icon">◌</span><span class="copy"><b>Theme</b><small>Match your preference</small></span><select name="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
       </section>
     </form>
 
