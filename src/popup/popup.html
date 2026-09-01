@@ -6,7 +6,7 @@
   <title>TableSnap Settings</title>
   <link rel="stylesheet" href="popup.css">
 </head>
-<body data-theme="system">
+<body data-theme="warm-black">
   <main class="popup-shell">
     <header>
       <div class="brand">
@@ -25,19 +25,16 @@
     <form id="settings-form">
       <section>
         <h2><span>GENERAL</span></h2>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span>
           <span class="copy"><b>Icon visibility</b><small>When export icon appears</small></span>
           <select name="iconVisibility"><option value="hover">On hover</option><option value="always">Always</option></select>
         </label>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M8 8h8M8 12h8M8 16h8M12 8v8"/></svg></span>
           <span class="copy"><b>Icon position</b><small>Where icon is placed</small></span>
           <select name="iconPosition"><option value="top-right">Top right</option><option value="top-left">Top left</option></select>
         </label>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3H3v4M17 3h4v4M7 21H3v-4M17 21h4v-4"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg></span>
           <span class="copy"><b>Icon size</b><small>Size of export icon</small></span>
@@ -47,29 +44,30 @@
 
       <section>
         <h2><span>APPEARANCE</span></h2>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-2-2-2h-2.2a2 2 0 0 1-1.8-2.8l.6-1.3A2 2 0 0 0 13.8 3H12Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="10" cy="6.8" r="1"/><circle cx="7.7" cy="14" r="1"/></svg></span>
           <span class="copy"><b>Theme</b><small>Choose your preferred theme</small></span>
-          <select name="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
+          <select name="theme"><option value="warm-black">Warm Black</option><option value="light">Light</option><option value="system">System</option></select>
+        </label>
+        <label class="setting-row">
+          <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></span>
+          <span class="copy"><b>Accent color</b><small>Primary color for highlights</small></span>
+          <select name="accentColor"><option value="orange">Orange</option></select>
         </label>
       </section>
 
       <section>
         <h2><span>EXPORT</span></h2>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9h16M9 9v11M14 9v11M9 14h11"/></svg></span>
           <span class="copy"><b>Default format</b><small>Format preselected in menu</small></span>
           <select name="defaultFormat"><option value="csv">CSV</option><option value="markdown">Markdown</option><option value="image">Image</option></select>
         </label>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 7h2v5a4 4 0 0 1-4 4v-2a2 2 0 0 0 2-2V7Z"/><path d="M15 7h2v5a4 4 0 0 1-4 4v-2a2 2 0 0 0 2-2V7Z"/></svg></span>
           <span class="copy"><b>CSV delimiter</b><small>Delimiter used in CSV files</small></span>
           <select name="csvDelimiter"><option value=",">Comma (,)</option><option value=";">Semicolon (;)</option><option value="&#9;">Tab</option></select>
         </label>
-
         <label class="setting-row">
           <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m6 17 4-4 3 3 2-2 3 3"/></svg></span>
           <span class="copy"><b>Image scale</b><small>Higher scale = better quality</small></span>
