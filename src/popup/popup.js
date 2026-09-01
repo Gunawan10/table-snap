@@ -6,7 +6,7 @@ const DEFAULTS = {
   defaultFormat: 'csv',
   csvDelimiter: ',',
   imageScale: 2,
-  theme: 'warm-black',
+  theme: 'system',
   accentColor: 'orange'
 };
 
@@ -18,6 +18,10 @@ function applyTheme(theme) {
   document.body.dataset.theme = theme;
 }
 
+function applyAccent(accentColor) {
+  document.body.dataset.accent = accentColor;
+}
+
 async function load() {
   const settings = await chrome.storage.local.get(DEFAULTS);
   enabledToggle.checked = Boolean(settings.enabled);
@@ -26,6 +30,7 @@ async function load() {
     if (field) field.value = String(value);
   });
   applyTheme(settings.theme);
+  applyAccent(settings.accentColor);
 }
 
 enabledToggle.addEventListener('change', async () => {
@@ -38,6 +43,7 @@ form.addEventListener('change', async (event) => {
   const value = field.name === 'imageScale' ? Number(field.value) : field.value;
   await chrome.storage.local.set({ [field.name]: value });
   if (field.name === 'theme') applyTheme(value);
+  if (field.name === 'accentColor') applyAccent(value);
 });
 
 resetButton.addEventListener('click', async () => {
