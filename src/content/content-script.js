@@ -10,6 +10,9 @@ const DEFAULT_SETTINGS = Object.freeze({
   theme: 'system'
 });
 
+const MIN_SAVE_STATE_MS = 450;
+const SAVED_STATE_MS = 650;
+
 let settings;
 let activeCard = null;
 let activeTable = null;
@@ -170,6 +173,57 @@ function logoSvg() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="7" width="14" height="11" rx="1"/><path d="M5 11h14M9 7v11M15 7v11M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg>`;
 }
 
+function spinnerSvg() {
+  return '<svg class="tablesnap-spinner" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>';
+}
+
+function checkSvg() {
+  return '<svg class="tablesnap-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getStatusIcon(button) {
+  let icon = button.querySelector('.tablesnap-download-icon');
+  if (!icon) {
+    icon = document.createElement('span');
+    icon.className = 'tablesnap-download-icon';
+    button.append(icon);
+  }
+  return icon;
+}
+
+function setSaveState(card, button, state, format) {
+  const title = button.querySelector('strong');
+  const icon = getStatusIcon(button);
+  const allButtons = card.querySelectorAll('button');
+
+  if (!button.dataset.originalTitle && title) button.dataset.originalTitle = title.textContent;
+  card.dataset.saving = String(state === 'loading');
+
+  allButtons.forEach((item) => {
+    item.disabled = state === 'loading' && item !== button;
+  });
+  button.disabled = state === 'loading';
+  button.dataset.saveState = state;
+
+  if (state === 'loading') {
+    if (title) title.textContent = format === 'image' ? 'Rendering image...' : 'Saving...';
+    icon.innerHTML = spinnerSvg();
+    return;
+  }
+
+  if (state === 'saved') {
+    if (title) title.textContent = 'Saved';
+    icon.innerHTML = checkSvg();
+    return;
+  }
+
+  if (title) title.textContent = button.dataset.originalTitle || title.textContent;
+}
+
 function createExportCard(table) {
   const card = document.createElement('div');
   card.className = 'tablesnap-export-card';
@@ -186,11 +240,24 @@ function createExportCard(table) {
     </div>`;
   card.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-format]');
-    if (!button) return;
+    if (!button || card.dataset.saving === 'true') return;
+
+    const format = button.dataset.format;
+    const startedAt = performance.now();
+    setSaveState(card, button, 'loading', format);
+
     try {
-      await exportTable(table, button.dataset.format);
-      closeCard();
+      await exportTable(table, format);
+      const elapsed = performance.now() - startedAt;
+      if (elapsed < MIN_SAVE_STATE_MS) await wait(MIN_SAVE_STATE_MS - elapsed);
+      if (!card.isConnected) return;
+      setSaveState(card, button, 'saved', format);
+      await wait(SAVED_STATE_MS);
+      if (card.isConnected) closeCard();
     } catch (error) {
+      setSaveState(card, button, 'idle', format);
+      card.dataset.saving = 'false';
+      card.querySelectorAll('button').forEach((item) => { item.disabled = false; });
       console.error('[TableSnap] Export failed:', error);
     }
   });
