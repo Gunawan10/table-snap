@@ -6,7 +6,8 @@ const DEFAULTS = {
   defaultFormat: 'csv',
   csvDelimiter: ',',
   imageScale: 2,
-  theme: 'system'
+  theme: 'warm-black',
+  accentColor: 'orange'
 };
 
 const form = document.querySelector('#settings-form');
