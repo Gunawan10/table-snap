@@ -27,7 +27,12 @@ async function load() {
   enabledToggle.checked = Boolean(settings.enabled);
   Object.entries(settings).forEach(([key, value]) => {
     const field = form.elements.namedItem(key);
-    if (field) field.value = String(value);
+    if (!field) return;
+    if (field instanceof RadioNodeList) {
+      field.value = String(value);
+      return;
+    }
+    field.value = String(value);
   });
   applyTheme(settings.theme);
   applyAccent(settings.accentColor);
