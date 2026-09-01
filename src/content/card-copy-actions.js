@@ -1,5 +1,5 @@
 let tablesnapActiveTable = null;
-let tablesnapTheme = 'system';
+let tablesnapTheme = 'warm-black';
 
 function tablesnapCleanText(value) {
   return String(value ?? '')
@@ -130,14 +130,34 @@ function tablesnapFindTableForIcon(icon) {
   })[0] || null;
 }
 
+function downloadSvg() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>';
+}
+
+function copySvg(type) {
+  if (type === 'csv') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 12h5M10 15h5M10 18h3"/></svg>';
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5M10 12v6m0-6 2 3 2-3v6"/></svg>';
+}
+
+function tablesnapDecoratePrimaryActions(card) {
+  card.querySelectorAll('.tablesnap-card-actions button').forEach((button) => {
+    if (button.querySelector('.tablesnap-download-icon')) return;
+    const icon = document.createElement('span');
+    icon.className = 'tablesnap-download-icon';
+    icon.innerHTML = downloadSvg();
+    button.append(icon);
+  });
+}
+
 function tablesnapAddCopyActions(card) {
   if (card.querySelector('.tablesnap-copy-actions')) return;
   card.dataset.theme = tablesnapTheme;
+  tablesnapDecoratePrimaryActions(card);
   const actions = document.createElement('div');
   actions.className = 'tablesnap-copy-actions';
   actions.innerHTML = `
-    <button type="button" data-copy="csv"><span>▤</span><span>Copy as CSV</span></button>
-    <button type="button" data-copy="markdown"><span>▧</span><span>Copy as MD</span></button>`;
+    <button type="button" data-copy="csv"><span class="copy-icon csv-copy">${copySvg('csv')}</span><span class="copy-label"><strong>Copy as CSV</strong><small>Copy to clipboard</small></span></button>
+    <button type="button" data-copy="markdown"><span class="copy-icon md-copy">${copySvg('markdown')}</span><span class="copy-label"><strong>Copy as Markdown</strong><small>Copy to clipboard</small></span></button>`;
   actions.addEventListener('click', async (event) => {
     const button = event.target.closest('[data-copy]');
     if (!button || !tablesnapActiveTable) return;
@@ -147,12 +167,13 @@ function tablesnapAddCopyActions(card) {
       ? tablesnapToCsv(parsed, csvDelimiter)
       : tablesnapToMarkdown(parsed);
     await tablesnapCopy(text);
-    const original = button.querySelector('span:last-child').textContent;
+    const strong = button.querySelector('strong');
+    const original = strong.textContent;
     button.dataset.copied = 'true';
-    button.querySelector('span:last-child').textContent = 'Copied';
+    strong.textContent = 'Copied';
     setTimeout(() => {
       button.dataset.copied = 'false';
-      button.querySelector('span:last-child').textContent = original;
+      strong.textContent = original;
     }, 1200);
   });
   card.append(actions);
@@ -169,13 +190,13 @@ const tablesnapCardObserver = new MutationObserver(() => {
 
 tablesnapCardObserver.observe(document.documentElement, { childList: true, subtree: true });
 
-chrome.storage.local.get({ theme: 'system' }).then(({ theme }) => {
+chrome.storage.local.get({ theme: 'warm-black' }).then(({ theme }) => {
   tablesnapTheme = theme;
   document.querySelectorAll('.tablesnap-export-card').forEach((card) => { card.dataset.theme = theme; });
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes.theme) return;
-  tablesnapTheme = changes.theme.newValue || 'system';
+  tablesnapTheme = changes.theme.newValue || 'warm-black';
   document.querySelectorAll('.tablesnap-export-card').forEach((card) => { card.dataset.theme = tablesnapTheme; });
 });
