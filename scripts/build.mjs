@@ -38,6 +38,7 @@ await build({
 
 await cp('manifest.json', 'dist/manifest.json');
 await cp('src/content/content.css', 'dist/content/content.css');
+await cp('src/content/save-loading.css', 'dist/content/save-loading.css');
 await cp('src/popup/popup.html', 'dist/popup/popup.html');
 await cp('src/popup/popup.css', 'dist/popup/popup.css');
 await cp('src/popup/popup.js', 'dist/popup/popup.js');
