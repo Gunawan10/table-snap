@@ -45,6 +45,25 @@
     })[0] || null;
   }
 
+  function isHorizontalClipper(node) {
+    if (!(node instanceof HTMLElement)) return false;
+    if (node.scrollWidth <= node.clientWidth + 1) return false;
+    const style = getComputedStyle(node);
+    return /auto|scroll|hidden|clip/.test(style.overflowX)
+      || /auto|scroll|hidden|clip/.test(style.overflow);
+  }
+
+  function findScrollRegion(table) {
+    let node = table?.parentElement || null;
+
+    for (let depth = 0; node && depth < 8 && node !== document.body; depth += 1, node = node.parentElement) {
+      const nested = [...node.querySelectorAll('*')].filter(isHorizontalClipper);
+      if (isHorizontalClipper(node) || nested.length) return node;
+    }
+
+    return table?.parentElement || null;
+  }
+
   function restoreExpandedLayout() {
     clearTimeout(restoreTimer);
     restoreTimer = null;
@@ -56,45 +75,39 @@
     restoreExpandedLayout();
     if (!table) return;
 
+    const region = findScrollRegion(table);
+    if (!region) return;
+
+    const candidates = [region, ...region.querySelectorAll('*')]
+      .filter(isHorizontalClipper);
+    if (!candidates.length) return;
+
     const changed = [];
-    let node = table.parentElement;
+    const ordered = [...new Set(candidates)].sort((a, b) => a.contains(b) ? 1 : b.contains(a) ? -1 : 0);
 
-    for (let depth = 0; node && depth < 8 && node !== document.body; depth += 1, node = node.parentElement) {
+    ordered.forEach((node) => {
       const fullWidth = node.scrollWidth;
-      const visibleWidth = node.clientWidth;
-      if (fullWidth <= visibleWidth + 1) continue;
-
-      const style = getComputedStyle(node);
-      const clipsHorizontally = /auto|scroll|hidden|clip/.test(style.overflowX)
-        || /auto|scroll|hidden|clip/.test(style.overflow);
-      if (!clipsHorizontally) continue;
-
       changed.push({
         node,
         width: node.style.width,
         minWidth: node.style.minWidth,
         maxWidth: node.style.maxWidth,
-        overflow: node.style.overflow,
         overflowX: node.style.overflowX,
         scrollLeft: node.scrollLeft
       });
 
+      node.scrollLeft = 0;
       node.style.setProperty('width', `${fullWidth}px`, 'important');
       node.style.setProperty('min-width', `${fullWidth}px`, 'important');
       node.style.setProperty('max-width', 'none', 'important');
-      node.style.setProperty('overflow', 'visible', 'important');
       node.style.setProperty('overflow-x', 'visible', 'important');
-      node.scrollLeft = 0;
-    }
-
-    if (!changed.length) return;
+    });
 
     pendingLayoutRestore = () => {
       changed.reverse().forEach((state) => {
         state.node.style.width = state.width;
         state.node.style.minWidth = state.minWidth;
         state.node.style.maxWidth = state.maxWidth;
-        state.node.style.overflow = state.overflow;
         state.node.style.overflowX = state.overflowX;
         state.node.scrollLeft = state.scrollLeft;
       });
