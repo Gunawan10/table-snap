@@ -10,17 +10,35 @@ function positionCard() {
   if (!activeCard || !activeIcon || !activeCard.isConnected || !activeIcon.isConnected) return;
 
   const iconRect = activeIcon.getBoundingClientRect();
-  const cardWidth = activeCard.offsetWidth || 276;
+  const cardWidth = activeCard.offsetWidth || 292;
+  const cardHeight = activeCard.offsetHeight || 320;
   const gap = 6;
+  const margin = 8;
   const pageLeft = window.scrollX;
   const pageTop = window.scrollY;
   const viewportRight = pageLeft + window.innerWidth;
+  const viewportBottom = pageTop + window.innerHeight;
 
   let left = pageLeft + iconRect.right - cardWidth;
-  left = Math.max(pageLeft + 8, Math.min(left, viewportRight - cardWidth - 8));
+  left = Math.max(pageLeft + margin, Math.min(left, viewportRight - cardWidth - margin));
+
+  const belowTop = pageTop + iconRect.bottom + gap;
+  const aboveTop = pageTop + iconRect.top - cardHeight - gap;
+  const fitsBelow = belowTop + cardHeight <= viewportBottom - margin;
+  const fitsAbove = aboveTop >= pageTop + margin;
+
+  let top;
+  if (fitsBelow || !fitsAbove) {
+    top = Math.min(belowTop, viewportBottom - cardHeight - margin);
+  } else {
+    top = aboveTop;
+  }
+  top = Math.max(pageTop + margin, top);
 
   activeCard.style.left = `${left}px`;
-  activeCard.style.top = `${pageTop + iconRect.bottom + gap}px`;
+  activeCard.style.top = `${top}px`;
+  activeCard.style.maxHeight = `${Math.max(160, window.innerHeight - margin * 2)}px`;
+  activeCard.style.overflowY = 'auto';
 }
 
 function bindCard(card) {
@@ -29,7 +47,7 @@ function bindCard(card) {
   if (!activeIcon) return;
 
   activeIcon.dataset.cardOpen = 'true';
-  requestAnimationFrame(positionCard);
+  requestAnimationFrame(() => requestAnimationFrame(positionCard));
 }
 
 function clearCardState() {
