@@ -78,36 +78,61 @@
     const region = findScrollRegion(table);
     if (!region) return;
 
-    const candidates = [region, ...region.querySelectorAll('*')]
-      .filter(isHorizontalClipper);
-    if (!candidates.length) return;
+    const clippers = [region, ...region.querySelectorAll('*')].filter(isHorizontalClipper);
+    const tables = [table, ...region.querySelectorAll('table')];
+    const fullWidth = Math.ceil(Math.max(
+      region.scrollWidth,
+      region.getBoundingClientRect().width,
+      ...clippers.map((node) => node.scrollWidth),
+      ...tables.map((node) => Math.max(node.scrollWidth, node.getBoundingClientRect().width))
+    ));
+
+    if (!Number.isFinite(fullWidth) || fullWidth <= 0) return;
 
     const changed = [];
-    const ordered = [...new Set(candidates)].sort((a, b) => a.contains(b) ? 1 : b.contains(a) ? -1 : 0);
+    const changedNodes = new Set();
 
-    ordered.forEach((node) => {
-      const fullWidth = node.scrollWidth;
+    function expandNode(node, width, resetScroll = false) {
+      if (!(node instanceof HTMLElement) || changedNodes.has(node)) return;
+      changedNodes.add(node);
       changed.push({
         node,
         width: node.style.width,
         minWidth: node.style.minWidth,
         maxWidth: node.style.maxWidth,
+        overflow: node.style.overflow,
         overflowX: node.style.overflowX,
         scrollLeft: node.scrollLeft
       });
 
-      node.scrollLeft = 0;
-      node.style.setProperty('width', `${fullWidth}px`, 'important');
-      node.style.setProperty('min-width', `${fullWidth}px`, 'important');
+      if (resetScroll) node.scrollLeft = 0;
+      node.style.setProperty('width', `${width}px`, 'important');
+      node.style.setProperty('min-width', `${width}px`, 'important');
       node.style.setProperty('max-width', 'none', 'important');
+      node.style.setProperty('overflow', 'visible', 'important');
       node.style.setProperty('overflow-x', 'visible', 'important');
+    }
+
+    clippers.forEach((node) => expandNode(node, Math.max(fullWidth, node.scrollWidth), true));
+    tables.forEach((node) => {
+      if (node.scrollWidth > node.clientWidth + 1 || node.getBoundingClientRect().width < fullWidth) {
+        expandNode(node, Math.max(fullWidth, node.scrollWidth));
+      }
     });
+
+    let ancestor = region;
+    for (let depth = 0; ancestor && depth < 5 && ancestor !== document.body; depth += 1, ancestor = ancestor.parentElement) {
+      expandNode(ancestor, fullWidth);
+    }
+
+    if (!changed.length) return;
 
     pendingLayoutRestore = () => {
       changed.reverse().forEach((state) => {
         state.node.style.width = state.width;
         state.node.style.minWidth = state.minWidth;
         state.node.style.maxWidth = state.maxWidth;
+        state.node.style.overflow = state.overflow;
         state.node.style.overflowX = state.overflowX;
         state.node.scrollLeft = state.scrollLeft;
       });
