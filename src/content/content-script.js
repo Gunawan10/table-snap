@@ -161,22 +161,46 @@ function normalizeHeaders(grid, headerRowCount) {
   });
 }
 
+function isMergedHeaderColumn(grid, headerRowCount, column) {
+  for (let row = 0; row < headerRowCount; row += 1) {
+    const entry = grid[row]?.[column];
+    if (!entry) continue;
+    if (grid[row]?.[column - 1] === entry || grid[row]?.[column + 1] === entry) return true;
+  }
+  return false;
+}
+
+function compactDecorativeColumns(grid, headerRowCount, headers, dataRows) {
+  if (!headers.length || !dataRows.length) return { headers, rows: dataRows };
+
+  const keepColumns = headers.map((_, column) => {
+    const hasBodyText = dataRows.some((row) => cleanText(row[column] || '') !== '');
+    if (hasBodyText) return true;
+    return !isMergedHeaderColumn(grid, headerRowCount, column);
+  });
+
+  return {
+    headers: headers.filter((_, column) => keepColumns[column]),
+    rows: dataRows.map((row) => row.filter((_, column) => keepColumns[column]))
+  };
+}
+
 function parseTable(table) {
   const visibleRows = getVisibleRows(table);
   const rows = removeDuplicateStickyHeaders(table, visibleRows);
   const grid = buildLogicalGrid(rows);
   const headerRowCount = detectHeaderRowCount(table, rows);
   const headers = normalizeHeaders(grid, headerRowCount);
+
   if (!headers.length && grid.length) {
     return {
       headers: Array.from({ length: grid[0].length }, (_, index) => `Column ${index + 1}`),
       rows: grid.map((row) => row.map((entry) => entry?.text ?? ''))
     };
   }
-  return {
-    headers,
-    rows: grid.slice(headerRowCount).map((row) => row.map((entry) => entry?.text ?? ''))
-  };
+
+  const dataRows = grid.slice(headerRowCount).map((row) => row.map((entry) => entry?.text ?? ''));
+  return compactDecorativeColumns(grid, headerRowCount, headers, dataRows);
 }
 
 function escapeCsv(value, delimiter) {
