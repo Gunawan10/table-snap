@@ -9,16 +9,58 @@ function tablesnapCleanText(value) {
     .trim();
 }
 
+function tablesnapIsHiddenElement(element) {
+  if (!(element instanceof Element)) return false;
+  if (element.hidden || element.getAttribute('aria-hidden') === 'true') return true;
+  const style = getComputedStyle(element);
+  return style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse';
+}
+
+function tablesnapIsVisibleCell(cell) {
+  if (tablesnapIsHiddenElement(cell)) return false;
+  const rect = cell.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+function tablesnapExtractCellText(cell) {
+  const clone = cell.cloneNode(true);
+  clone.querySelectorAll([
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    'canvas',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    'img',
+    '[role="button"]',
+    '[aria-hidden="true"]',
+    '[hidden]',
+    '.tablesnap-export-icon',
+    '.tablesnap-export-card'
+  ].join(',')).forEach((node) => node.remove());
+  return tablesnapCleanText(clone.textContent || '');
+}
+
+function tablesnapGetVisibleRows(table) {
+  return [...table.rows].filter((row) => {
+    if (tablesnapIsHiddenElement(row)) return false;
+    return [...row.cells].some(tablesnapIsVisibleCell);
+  });
+}
+
 function tablesnapBuildGrid(rows) {
   const grid = [];
   rows.forEach((row, rowIndex) => {
     grid[rowIndex] ||= [];
     let columnIndex = 0;
-    [...row.cells].forEach((cell) => {
+    [...row.cells].filter(tablesnapIsVisibleCell).forEach((cell) => {
       while (grid[rowIndex][columnIndex] !== undefined) columnIndex += 1;
       const rowspan = Math.max(1, Number.parseInt(cell.getAttribute('rowspan') || '1', 10));
       const colspan = Math.max(1, Number.parseInt(cell.getAttribute('colspan') || '1', 10));
-      const entry = { text: tablesnapCleanText(cell.innerText || cell.textContent || '') };
+      const entry = { text: tablesnapExtractCellText(cell) };
       for (let rowOffset = 0; rowOffset < rowspan; rowOffset += 1) {
         const targetRow = rowIndex + rowOffset;
         grid[targetRow] ||= [];
@@ -34,20 +76,50 @@ function tablesnapBuildGrid(rows) {
 }
 
 function tablesnapHeaderCount(table, rows) {
-  if (table.tHead?.rows.length) return table.tHead.rows.length;
+  if (table.tHead?.rows.length) return [...table.tHead.rows].filter((row) => rows.includes(row)).length;
   let count = 0;
   for (const row of rows) {
-    const cells = [...row.cells];
+    const cells = [...row.cells].filter(tablesnapIsVisibleCell);
     if (!cells.length || !cells.some((cell) => cell.tagName === 'TH')) break;
     count += 1;
   }
   return count;
 }
 
+function tablesnapIsMergedHeaderColumn(grid, headerCount, column) {
+  for (let row = 0; row < headerCount; row += 1) {
+    const entry = grid[row]?.[column];
+    if (!entry) continue;
+    if (grid[row]?.[column - 1] === entry || grid[row]?.[column + 1] === entry) return true;
+  }
+  return false;
+}
+
+function tablesnapCompactDecorativeColumns(grid, headerCount, headers, rows) {
+  if (!headers.length || !rows.length) return { headers, rows };
+
+  const keepColumns = headers.map((header, column) => {
+    const hasBodyText = rows.some((row) => tablesnapCleanText(row[column] || '') !== '');
+    if (hasBodyText) return true;
+
+    if (!tablesnapIsMergedHeaderColumn(grid, headerCount, column)) return true;
+
+    const sameHeaderLeft = column > 0 && headers[column - 1] === header;
+    const sameHeaderRight = column < headers.length - 1 && headers[column + 1] === header;
+    return !(sameHeaderLeft || sameHeaderRight);
+  });
+
+  return {
+    headers: headers.filter((_, column) => keepColumns[column]),
+    rows: rows.map((row) => row.filter((_, column) => keepColumns[column]))
+  };
+}
+
 function tablesnapParseTable(table) {
-  const rows = [...table.rows];
+  const rows = tablesnapGetVisibleRows(table);
   const grid = tablesnapBuildGrid(rows);
   if (!grid.length) return { headers: [], rows: [] };
+
   const headerCount = tablesnapHeaderCount(table, rows);
   const headers = Array.from({ length: grid[0].length }, (_, column) => {
     const parts = [];
@@ -60,10 +132,9 @@ function tablesnapParseTable(table) {
     }
     return parts.join(' / ') || `Column ${column + 1}`;
   });
-  return {
-    headers,
-    rows: grid.slice(headerCount).map((row) => row.map((entry) => entry?.text ?? ''))
-  };
+
+  const dataRows = grid.slice(headerCount).map((row) => row.map((entry) => entry?.text ?? ''));
+  return tablesnapCompactDecorativeColumns(grid, headerCount, headers, dataRows);
 }
 
 function tablesnapEscapeCsv(value, delimiter) {
