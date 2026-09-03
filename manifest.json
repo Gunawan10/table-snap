@@ -29,7 +29,8 @@
         "content/image-background-fix.js",
         "content/content-script.js",
         "content/card-copy-actions.js",
-        "content/card-position-fix.js"
+        "content/card-position-fix.js",
+        "content/export-error-state.js"
       ],
       "css": ["content/content.css", "content/save-loading.css"],
       "run_at": "document_idle"
