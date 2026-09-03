@@ -51,6 +51,13 @@ function tablesnapGetVisibleRows(table) {
   });
 }
 
+function tablesnapHasVisibleDataRows(table) {
+  return [...(table.tBodies || [])].some((tbody) => [...tbody.rows].some((row) => {
+    if (tablesnapIsHiddenElement(row)) return false;
+    return [...row.cells].some((cell) => tablesnapIsVisibleCell(cell) && tablesnapExtractCellText(cell) !== '');
+  }));
+}
+
 function tablesnapRowSignature(row) {
   return [...row.cells]
     .filter(tablesnapIsVisibleCell)
@@ -229,6 +236,9 @@ function tablesnapFindTableForIcon(icon) {
     return x >= rect.left - 12 && x <= rect.right + 12 && y >= rect.top - 12 && y <= rect.bottom + 12;
   });
   return candidates.sort((a, b) => {
+    const aHasData = tablesnapHasVisibleDataRows(a) ? 1 : 0;
+    const bHasData = tablesnapHasVisibleDataRows(b) ? 1 : 0;
+    if (aHasData !== bHasData) return bHasData - aHasData;
     const ar = a.getBoundingClientRect();
     const br = b.getBoundingClientRect();
     return ar.width * ar.height - br.width * br.height;
