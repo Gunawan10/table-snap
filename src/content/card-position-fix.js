@@ -1,9 +1,12 @@
 let activeIcon = null;
 let activeCard = null;
+let lastClickedIcon = null;
 
 function getVisibleExportIcon() {
+  if (lastClickedIcon?.isConnected) return lastClickedIcon;
+
   const icons = [...document.querySelectorAll('.tablesnap-export-icon')];
-  return icons.find((icon) => icon.matches(':hover') || icon === document.activeElement || icon.classList.contains('visible')) || null;
+  return icons.find((icon) => icon.matches(':hover') || icon === document.activeElement) || null;
 }
 
 function positionCard() {
@@ -55,6 +58,11 @@ function clearCardState() {
   activeIcon = null;
   activeCard = null;
 }
+
+document.addEventListener('pointerdown', (event) => {
+  const icon = event.target.closest?.('.tablesnap-export-icon');
+  if (icon) lastClickedIcon = icon;
+}, true);
 
 const observer = new MutationObserver(() => {
   const card = document.querySelector('.tablesnap-export-card');
