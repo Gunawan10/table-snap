@@ -130,10 +130,16 @@ function findTableGroup(table) {
       return (!expected || !columns || columns === expected) && widthsRoughlyMatch(table, candidate);
     });
 
-    const hasHeader = compatible.some((candidate) => getHeaderRows(candidate).length > 0);
-    const hasBody = compatible.some(hasVisibleDataRows);
+    const headerOnlyTables = compatible.filter((candidate) => {
+      return getHeaderRows(candidate).length > 0 && !hasVisibleDataRows(candidate);
+    });
+    const bodyTables = compatible.filter(hasVisibleDataRows);
+    const bodyOnlyTables = bodyTables.filter((candidate) => getHeaderRows(candidate).length === 0);
 
-    if (compatible.length > 1 && hasHeader && hasBody) {
+    const looksSplit = headerOnlyTables.length > 0 && bodyTables.length > 0
+      && (bodyOnlyTables.length > 0 || headerOnlyTables.includes(table));
+
+    if (compatible.length > 1 && looksSplit) {
       return { root: ancestor, tables: compatible };
     }
   }
