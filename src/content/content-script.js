@@ -26,17 +26,99 @@ function cleanText(value) {
     .trim();
 }
 
+function isHiddenElement(element) {
+  if (!(element instanceof Element)) return false;
+  if (element.hidden || element.getAttribute('aria-hidden') === 'true') return true;
+  const style = getComputedStyle(element);
+  return style.display === 'none' || style.visibility === 'hidden' || style.visibility === 'collapse';
+}
+
+function isVisibleCell(cell) {
+  if (isHiddenElement(cell)) return false;
+  const rect = cell.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+function extractCellText(cell) {
+  const clone = cell.cloneNode(true);
+
+  clone.querySelectorAll([
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    'canvas',
+    'button',
+    'input',
+    'select',
+    'textarea',
+    '[role="button"]',
+    '[aria-hidden="true"]',
+    '[hidden]',
+    '.tablesnap-export-icon',
+    '.tablesnap-export-card'
+  ].join(',')).forEach((node) => node.remove());
+
+  clone.querySelectorAll('img[alt]').forEach((image) => {
+    const alt = cleanText(image.getAttribute('alt'));
+    if (alt) image.replaceWith(document.createTextNode(alt));
+    else image.remove();
+  });
+
+  return cleanText(clone.textContent || '');
+}
+
+function getVisibleRows(table) {
+  return [...table.rows].filter((row) => {
+    if (isHiddenElement(row)) return false;
+    return [...row.cells].some(isVisibleCell);
+  });
+}
+
+function rowSignature(row) {
+  return [...row.cells]
+    .filter(isVisibleCell)
+    .map((cell) => extractCellText(cell).toLowerCase())
+    .join('|');
+}
+
+function removeDuplicateStickyHeaders(table, rows) {
+  const headerRows = table.tHead
+    ? [...table.tHead.rows].filter((row) => rows.includes(row))
+    : rows.filter((row) => [...row.cells].some((cell) => cell.tagName === 'TH'));
+
+  if (!headerRows.length) return rows;
+
+  const headerSignatures = new Set(headerRows.map(rowSignature).filter(Boolean));
+
+  return rows.filter((row) => {
+    if (headerRows.includes(row)) return true;
+
+    const cells = [...row.cells].filter(isVisibleCell);
+    if (!cells.length) return false;
+
+    const signature = rowSignature(row);
+    if (!signature || !headerSignatures.has(signature)) return true;
+
+    const marker = `${row.id} ${row.className}`.toLowerCase();
+    const headerLike = cells.every((cell) => cell.tagName === 'TH');
+    const stickyLike = /sticky|clone|cloned|floating|frozen|fixed|header/.test(marker);
+
+    return !(headerLike || stickyLike);
+  });
+}
+
 function buildLogicalGrid(rows) {
   const grid = [];
   rows.forEach((row, rowIndex) => {
     grid[rowIndex] ||= [];
     let columnIndex = 0;
-    [...row.cells].forEach((cell) => {
+    [...row.cells].filter(isVisibleCell).forEach((cell) => {
       while (grid[rowIndex][columnIndex] !== undefined) columnIndex += 1;
       const rowspan = Math.max(1, Number.parseInt(cell.getAttribute('rowspan') || '1', 10));
       const colspan = Math.max(1, Number.parseInt(cell.getAttribute('colspan') || '1', 10));
       const entry = {
-        text: cleanText(cell.innerText || cell.textContent || ''),
+        text: extractCellText(cell),
         originRow: rowIndex,
         originColumn: columnIndex
       };
@@ -52,10 +134,12 @@ function buildLogicalGrid(rows) {
 }
 
 function detectHeaderRowCount(table, rows) {
-  if (table.tHead?.rows.length) return table.tHead.rows.length;
+  if (table.tHead?.rows.length) {
+    return [...table.tHead.rows].filter((row) => rows.includes(row)).length;
+  }
   let count = 0;
   for (const row of rows) {
-    const cells = [...row.cells];
+    const cells = [...row.cells].filter(isVisibleCell);
     if (!cells.length || !cells.some((cell) => cell.tagName === 'TH')) break;
     count += 1;
   }
@@ -78,7 +162,8 @@ function normalizeHeaders(grid, headerRowCount) {
 }
 
 function parseTable(table) {
-  const rows = [...table.rows];
+  const visibleRows = getVisibleRows(table);
+  const rows = removeDuplicateStickyHeaders(table, visibleRows);
   const grid = buildLogicalGrid(rows);
   const headerRowCount = detectHeaderRowCount(table, rows);
   const headers = normalizeHeaders(grid, headerRowCount);
