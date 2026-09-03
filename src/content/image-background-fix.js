@@ -1,5 +1,7 @@
 (() => {
   let pendingBackground = null;
+  let pendingLayoutRestore = null;
+  let restoreTimer = null;
   const originalToBlob = HTMLCanvasElement.prototype.toBlob;
 
   function isTransparent(color) {
@@ -43,6 +45,64 @@
     })[0] || null;
   }
 
+  function restoreExpandedLayout() {
+    clearTimeout(restoreTimer);
+    restoreTimer = null;
+    pendingLayoutRestore?.();
+    pendingLayoutRestore = null;
+  }
+
+  function expandHorizontalScrollContainers(table) {
+    restoreExpandedLayout();
+    if (!table) return;
+
+    const changed = [];
+    let node = table.parentElement;
+
+    for (let depth = 0; node && depth < 8 && node !== document.body; depth += 1, node = node.parentElement) {
+      const fullWidth = node.scrollWidth;
+      const visibleWidth = node.clientWidth;
+      if (fullWidth <= visibleWidth + 1) continue;
+
+      const style = getComputedStyle(node);
+      const clipsHorizontally = /auto|scroll|hidden|clip/.test(style.overflowX)
+        || /auto|scroll|hidden|clip/.test(style.overflow);
+      if (!clipsHorizontally) continue;
+
+      changed.push({
+        node,
+        width: node.style.width,
+        minWidth: node.style.minWidth,
+        maxWidth: node.style.maxWidth,
+        overflow: node.style.overflow,
+        overflowX: node.style.overflowX,
+        scrollLeft: node.scrollLeft
+      });
+
+      node.style.setProperty('width', `${fullWidth}px`, 'important');
+      node.style.setProperty('min-width', `${fullWidth}px`, 'important');
+      node.style.setProperty('max-width', 'none', 'important');
+      node.style.setProperty('overflow', 'visible', 'important');
+      node.style.setProperty('overflow-x', 'visible', 'important');
+      node.scrollLeft = 0;
+    }
+
+    if (!changed.length) return;
+
+    pendingLayoutRestore = () => {
+      changed.reverse().forEach((state) => {
+        state.node.style.width = state.width;
+        state.node.style.minWidth = state.minWidth;
+        state.node.style.maxWidth = state.maxWidth;
+        state.node.style.overflow = state.overflow;
+        state.node.style.overflowX = state.overflowX;
+        state.node.scrollLeft = state.scrollLeft;
+      });
+    };
+
+    restoreTimer = setTimeout(restoreExpandedLayout, 10000);
+  }
+
   document.addEventListener('pointerdown', (event) => {
     const imageButton = event.target.closest?.('.tablesnap-export-card [data-format="image"]');
     if (!imageButton) return;
@@ -53,6 +113,7 @@
       || null;
     const table = findTableForIcon(icon);
     pendingBackground = table ? resolveBackground(table) : resolveBackground(document.body);
+    expandHorizontalScrollContainers(table);
   }, true);
 
   HTMLCanvasElement.prototype.toBlob = function patchedToBlob(callback, type, quality) {
@@ -71,6 +132,7 @@
     context.fillRect(0, 0, flattened.width, flattened.height);
     context.drawImage(this, 0, 0);
 
+    restoreExpandedLayout();
     return originalToBlob.call(flattened, callback, type, quality);
   };
 })();
