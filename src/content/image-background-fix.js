@@ -141,7 +141,7 @@
     restoreTimer = setTimeout(restoreExpandedLayout, 10000);
   }
 
-  document.addEventListener('pointerdown', (event) => {
+  document.addEventListener('click', (event) => {
     const imageButton = event.target.closest?.('.tablesnap-export-card [data-format="image"]');
     if (!imageButton) return;
 
