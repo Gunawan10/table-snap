@@ -51,6 +51,39 @@ function tablesnapGetVisibleRows(table) {
   });
 }
 
+function tablesnapRowSignature(row) {
+  return [...row.cells]
+    .filter(tablesnapIsVisibleCell)
+    .map((cell) => tablesnapExtractCellText(cell).toLowerCase())
+    .join('|');
+}
+
+function tablesnapRemoveDuplicateStickyHeaders(table, rows) {
+  const headerRows = table.tHead
+    ? [...table.tHead.rows].filter((row) => rows.includes(row))
+    : rows.filter((row) => [...row.cells].some((cell) => cell.tagName === 'TH'));
+
+  if (!headerRows.length) return rows;
+
+  const headerSignatures = new Set(headerRows.map(tablesnapRowSignature).filter(Boolean));
+
+  return rows.filter((row) => {
+    if (headerRows.includes(row)) return true;
+
+    const cells = [...row.cells].filter(tablesnapIsVisibleCell);
+    if (!cells.length) return false;
+
+    const signature = tablesnapRowSignature(row);
+    if (!signature || !headerSignatures.has(signature)) return true;
+
+    const marker = `${row.id} ${row.className} ${row.parentElement?.id || ''} ${row.parentElement?.className || ''}`.toLowerCase();
+    const headerLike = cells.every((cell) => cell.tagName === 'TH') || row.getAttribute('role') === 'rowheader';
+    const stickyLike = /sticky|clone|cloned|floating|frozen|fixed|header/.test(marker);
+
+    return !(headerLike || stickyLike);
+  });
+}
+
 function tablesnapBuildGrid(rows) {
   const grid = [];
   rows.forEach((row, rowIndex) => {
@@ -116,7 +149,8 @@ function tablesnapCompactDecorativeColumns(grid, headerCount, headers, rows) {
 }
 
 function tablesnapParseTable(table) {
-  const rows = tablesnapGetVisibleRows(table);
+  const visibleRows = tablesnapGetVisibleRows(table);
+  const rows = tablesnapRemoveDuplicateStickyHeaders(table, visibleRows);
   const grid = tablesnapBuildGrid(rows);
   if (!grid.length) return { headers: [], rows: [] };
 
