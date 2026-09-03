@@ -84,8 +84,11 @@ function getHeaderRows(table) {
 
 function getDataRows(table) {
   const rows = [];
-  [...table.tBodies].forEach((tbody) => {
-    [...tbody.rows].forEach((row) => {
+  const sections = [...table.tBodies];
+  if (table.tFoot) sections.push(table.tFoot);
+
+  sections.forEach((section) => {
+    [...section.rows].forEach((row) => {
       if (isHiddenElement(row)) return;
       const cells = visibleCells(row);
       if (!cells.length) return;
