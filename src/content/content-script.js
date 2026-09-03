@@ -325,9 +325,56 @@ function toMarkdown({ headers, rows }) {
   return [markdownRow(headers), markdownRow(headers.map(() => '---')), ...rows.map(markdownRow)].join('\n');
 }
 
+function getTableLabel(table) {
+  const caption = cleanText(table.caption?.innerText || table.caption?.textContent || '');
+  if (caption) return caption;
+
+  const ariaLabel = cleanText(table.getAttribute('aria-label') || '');
+  if (ariaLabel) return ariaLabel;
+
+  const labelledBy = table.getAttribute('aria-labelledby');
+  if (labelledBy) {
+    const label = labelledBy
+      .split(/\s+/)
+      .map((id) => cleanText(document.getElementById(id)?.textContent || ''))
+      .filter(Boolean)
+      .join(' ');
+    if (label) return label;
+  }
+
+  let node = table;
+  for (let depth = 0; node && depth < 4; depth += 1, node = node.parentElement) {
+    let sibling = node.previousElementSibling;
+    while (sibling) {
+      if (/^H[1-6]$/.test(sibling.tagName)) {
+        const heading = cleanText(sibling.textContent || '');
+        if (heading) return heading;
+      }
+      const nestedHeading = sibling.querySelector?.('h1, h2, h3, h4, h5, h6');
+      if (nestedHeading) {
+        const heading = cleanText(nestedHeading.textContent || '');
+        if (heading) return heading;
+      }
+      sibling = sibling.previousElementSibling;
+    }
+  }
+
+  return cleanText(document.title || '') || 'table';
+}
+
+function slugifyFilename(value) {
+  return cleanText(value)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 72) || 'table';
+}
+
 function createFilename(table, extension) {
-  const source = table.getAttribute('aria-label') || document.title || 'table';
-  const title = source.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'table';
+  const sourceTable = resolveHeaderTable(table, resolveDataTable(table));
+  const title = slugifyFilename(getTableLabel(sourceTable) || getTableLabel(table));
   return `table-${title}-${new Date().toISOString().slice(0, 10)}.${extension}`;
 }
 
