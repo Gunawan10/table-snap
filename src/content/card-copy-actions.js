@@ -49,6 +49,91 @@ function tablesnapFindTableForIcon(icon) {
   return window.__TableSnapCore?.resolveDataTable?.(presentation) || presentation;
 }
 
+function tablesnapVisibleCells(row) {
+  return [...row.cells].filter((cell) => {
+    const style = getComputedStyle(cell);
+    const rect = cell.getBoundingClientRect();
+    return !cell.hidden
+      && cell.getAttribute('aria-hidden') !== 'true'
+      && style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && style.visibility !== 'collapse'
+      && rect.width > 0
+      && rect.height > 0;
+  });
+}
+
+function tablesnapNumericWeight(value) {
+  if (value === 'bold') return 700;
+  if (value === 'normal') return 400;
+  const parsed = Number.parseInt(value || '400', 10);
+  return Number.isFinite(parsed) ? parsed : 400;
+}
+
+function tablesnapVisualHeaderScore(firstRow, secondRow) {
+  const firstCells = tablesnapVisibleCells(firstRow);
+  const secondCells = tablesnapVisibleCells(secondRow);
+  if (!firstCells.length || firstCells.length !== secondCells.length) return 0;
+
+  let score = 0;
+  const marker = `${firstRow.id} ${firstRow.className} ${firstCells.map((cell) => `${cell.id} ${cell.className}`).join(' ')}`.toLowerCase();
+  if (/(^|[\s_-])(header|head|heading|column-title|labels?)([\s_-]|$)/.test(marker)) score += 3;
+
+  const semanticHeader = firstRow.getAttribute('role') === 'columnheader'
+    || firstCells.some((cell) => cell.getAttribute('role') === 'columnheader' || cell.getAttribute('scope') === 'col');
+  if (semanticHeader) score += 3;
+
+  let heavier = 0;
+  let differentBackground = 0;
+  let largerText = 0;
+
+  firstCells.forEach((cell, index) => {
+    const firstStyle = getComputedStyle(cell);
+    const secondStyle = getComputedStyle(secondCells[index]);
+
+    const firstWeight = tablesnapNumericWeight(firstStyle.fontWeight);
+    const secondWeight = tablesnapNumericWeight(secondStyle.fontWeight);
+    if (firstWeight >= 600 && firstWeight >= secondWeight + 100) heavier += 1;
+
+    const firstBg = firstStyle.backgroundColor;
+    const secondBg = secondStyle.backgroundColor;
+    if (firstBg !== secondBg && firstBg !== 'rgba(0, 0, 0, 0)' && firstBg !== 'transparent') differentBackground += 1;
+
+    const firstSize = Number.parseFloat(firstStyle.fontSize || '0');
+    const secondSize = Number.parseFloat(secondStyle.fontSize || '0');
+    if (firstSize >= secondSize + 1) largerText += 1;
+  });
+
+  const majority = Math.ceil(firstCells.length / 2);
+  if (heavier >= majority) score += 1;
+  if (differentBackground >= majority) score += 1;
+  if (largerText >= majority) score += 1;
+
+  return score;
+}
+
+function tablesnapApplyVisualHeader(table, parsed) {
+  if (!table || !parsed?.headers?.length || !parsed?.rows?.length) return parsed;
+  if (!parsed.headers.every((header, index) => header === `Column ${index + 1}`)) return parsed;
+
+  const bodyRows = [...table.tBodies]
+    .flatMap((tbody) => [...tbody.rows])
+    .filter((row) => tablesnapVisibleCells(row).length);
+
+  if (bodyRows.length < 2) return parsed;
+  if (tablesnapVisualHeaderScore(bodyRows[0], bodyRows[1]) < 2) return parsed;
+
+  const inferredHeaders = parsed.rows[0].map((value, index) => {
+    const text = String(value ?? '').trim();
+    return text || `Column ${index + 1}`;
+  });
+
+  return {
+    headers: inferredHeaders,
+    rows: parsed.rows.slice(1)
+  };
+}
+
 function tablesnapDecoratePrimaryActions(card) {
   card.querySelectorAll('.tablesnap-card-actions button').forEach((button) => {
     if (button.querySelector('.tablesnap-download-icon')) return;
@@ -84,7 +169,10 @@ function tablesnapAddCopyActions(card) {
     const core = window.__TableSnapCore;
     if (!core?.parseTable) return;
 
-    const parsed = core.parseTable(tablesnapActiveTable);
+    const parsed = tablesnapApplyVisualHeader(
+      tablesnapActiveTable,
+      core.parseTable(tablesnapActiveTable)
+    );
     const { csvDelimiter = ',' } = await chrome.storage.local.get({ csvDelimiter: ',' });
 
     const text = button.dataset.copy === 'csv'
