@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TableSnap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Export HTML tables as CSV, Markdown, or PNG in one click.",
   "permissions": ["storage", "downloads"],
   "icons": {
