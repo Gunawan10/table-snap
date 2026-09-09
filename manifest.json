@@ -31,6 +31,7 @@
         "content/modern-table-support.js",
         "content/modern-image-background-fix.js",
         "content/card-copy-actions.js",
+        "content/expanded-export-support.js",
         "content/card-position-fix.js",
         "content/export-error-state.js"
       ],
