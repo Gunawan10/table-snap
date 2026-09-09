@@ -48,6 +48,7 @@ await build({
 });
 
 await cp('src/content/extension-state.js', 'dist/content/extension-state.js');
+await cp('src/content/semantic-cell-content.js', 'dist/content/semantic-cell-content.js');
 await cp('src/content/card-copy-actions.js', 'dist/content/card-copy-actions.js');
 await cp('src/content/card-position-fix.js', 'dist/content/card-position-fix.js');
 await cp('src/content/image-background-fix.js', 'dist/content/image-background-fix.js');
