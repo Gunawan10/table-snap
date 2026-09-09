@@ -4,12 +4,14 @@ import { htmlExporter } from './html.js';
 import { xlsxExporter } from './xlsx.js';
 import { sqlExporter } from './sql.js';
 import { ndjsonExporter } from './ndjson.js';
+import { pdfExporter } from './pdf.js';
 
 const exporters = new Map([
   [tsvExporter.id, tsvExporter],
   [jsonExporter.id, jsonExporter],
   [htmlExporter.id, htmlExporter],
   [xlsxExporter.id, xlsxExporter],
+  [pdfExporter.id, pdfExporter],
   [sqlExporter.id, sqlExporter],
   [ndjsonExporter.id, ndjsonExporter]
 ]);
