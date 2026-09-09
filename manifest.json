@@ -30,6 +30,7 @@
         "content/content-script.js",
         "content/modern-table-support.js",
         "content/modern-image-background-fix.js",
+        "content/semantic-cell-content.js",
         "content/card-copy-actions.js",
         "content/expanded-export-support.js",
         "content/card-position-fix.js",
