@@ -107,6 +107,7 @@ function formatDescription(id) {
   if (id === 'json') return 'Structured data for apps and APIs';
   if (id === 'html') return 'Portable HTML table markup';
   if (id === 'xlsx') return 'Native spreadsheet workbook';
+  if (id === 'pdf') return 'Printable table document with automatic pagination';
   if (id === 'sql') return 'SQL INSERT statements';
   if (id === 'ndjson') return 'One JSON object per line';
   return 'Export table';
