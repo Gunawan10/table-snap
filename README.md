@@ -1,6 +1,8 @@
 # TableSnap
 
-TableSnap is a lightweight, local-first Chrome extension for exporting HTML tables directly from web pages.
+**Fastest way to capture and export tables from the web.**
+
+TableSnap is a lightweight, local-first Chrome extension for capturing and exporting HTML tables directly from web pages.
 
 Hover a table, open the TableSnap export card, then save it as **CSV**, **Markdown**, or **PNG** without copying data manually or sending table content to a server.
 
@@ -174,7 +176,7 @@ npm run build
 
 ## Current Scope
 
-TableSnap currently focuses on exporting tables available directly on web pages.
+TableSnap currently focuses on capturing and exporting tables available directly on web pages.
 
 ## License
 
