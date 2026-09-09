@@ -39,6 +39,14 @@ await build({
   target: 'chrome120'
 });
 
+await build({
+  entryPoints: ['src/content/expanded-export-support.js'],
+  outfile: 'dist/content/expanded-export-support.js',
+  bundle: true,
+  minify: true,
+  target: 'chrome120'
+});
+
 await cp('src/content/extension-state.js', 'dist/content/extension-state.js');
 await cp('src/content/card-copy-actions.js', 'dist/content/card-copy-actions.js');
 await cp('src/content/card-position-fix.js', 'dist/content/card-position-fix.js');
