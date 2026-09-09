@@ -181,7 +181,7 @@ function addCopyActions(host, modern = false) {
 
 function exporterOptions() {
   return {
-    tableName: slugify(sourceLabel()).replace(/-/g, '_') || 'table_data'
+    tableName: 'table_data'
   };
 }
 
