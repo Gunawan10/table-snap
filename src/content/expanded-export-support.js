@@ -103,9 +103,12 @@ async function copyText(text) {
 }
 
 function formatDescription(id) {
-  if (id === 'tsv') return 'Tab-separated spreadsheet data';
+  if (id === 'tsv') return 'Tab-separated data for clean copy/paste and imports';
   if (id === 'json') return 'Structured data for apps and APIs';
   if (id === 'html') return 'Portable HTML table markup';
+  if (id === 'xlsx') return 'Native spreadsheet workbook';
+  if (id === 'sql') return 'SQL INSERT statements';
+  if (id === 'ndjson') return 'One JSON object per line';
   return 'Export table';
 }
 
@@ -161,34 +164,53 @@ function addModernActions(card) {
 
 function addCopyActions(host, modern = false) {
   if (host.querySelector('[data-expanded-copy]')) return;
-  listExporters().forEach((exporter) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.expandedCopy = exporter.id;
-    if (modern) {
-      button.textContent = `Copy ${exporter.label}`;
-    } else {
-      button.innerHTML = `<span class="copy-label"><strong>Copy as ${exporter.label}</strong><small>Copy to clipboard</small></span>`;
-    }
-    host.append(button);
-  });
+  listExporters()
+    .filter((exporter) => exporter.copyable !== false && typeof exporter.serialize === 'function')
+    .forEach((exporter) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.expandedCopy = exporter.id;
+      if (modern) {
+        button.textContent = `Copy ${exporter.label}`;
+      } else {
+        button.innerHTML = `<span class="copy-label"><strong>Copy as ${exporter.label}</strong><small>Copy to clipboard</small></span>`;
+      }
+      host.append(button);
+    });
+}
+
+function exporterOptions() {
+  return {
+    tableName: slugify(sourceLabel()).replace(/-/g, '_') || 'table_data'
+  };
 }
 
 async function handleExpandedExport(button, format) {
   const parsed = parseActiveSource();
   const exporter = getExporter(format);
   if (!parsed?.headers?.length || !exporter) throw new Error('No table data detected');
+
   button.disabled = true;
-  const output = serializeExport(format, parsed);
-  downloadBlob(new Blob([output], { type: exporter.mimeType }), createFilename(exporter.extension));
-  markTemporary(button, 'Saved');
-  setTimeout(() => { if (button.isConnected) button.disabled = false; }, 700);
+  try {
+    const blob = typeof exporter.createBlob === 'function'
+      ? await exporter.createBlob(parsed, exporterOptions())
+      : new Blob([serializeExport(format, parsed, exporterOptions())], { type: exporter.mimeType });
+
+    downloadBlob(blob, createFilename(exporter.extension));
+    markTemporary(button, 'Saved');
+  } finally {
+    setTimeout(() => { if (button.isConnected) button.disabled = false; }, 700);
+  }
 }
 
 async function handleExpandedCopy(button, format) {
   const parsed = parseActiveSource();
-  if (!parsed?.headers?.length) throw new Error('No table data detected');
-  await copyText(serializeExport(format, parsed));
+  const exporter = getExporter(format);
+  if (!parsed?.headers?.length || !exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') {
+    throw new Error('Format is not copyable');
+  }
+
+  await copyText(serializeExport(format, parsed, exporterOptions()));
   if (button.querySelector('strong')) markTemporary(button, 'Copied');
   else {
     const original = button.textContent;
