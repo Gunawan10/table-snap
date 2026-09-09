@@ -203,10 +203,13 @@ function parseDiv(root) {
   if (!matrix.length) return { headers: [], rows: [] };
 
   const firstCells = divRowCells(rows[0]);
-  const headerLike = firstCells.some((cell) => {
+  const rowHeaderLike = /(^|[\s_-])(header|head|heading|column-header|table-header|grid-header)([\s_-]|$)/.test(markerText(rows[0]));
+  const cellHeaderLike = firstCells.some((cell) => {
     const role = cell.getAttribute('role');
-    return role === 'columnheader' || /header|heading|column-title/.test(markerText(cell));
+    return role === 'columnheader'
+      || /(^|[\s_-])(header|head|heading|column-header|column-title|table-header|grid-header)([\s_-]|$)/.test(markerText(cell));
   });
+  const headerLike = rowHeaderLike || cellHeaderLike;
 
   if (headerLike) {
     return {
