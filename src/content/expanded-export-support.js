@@ -1,6 +1,25 @@
-import { getExporter, listExporters, serializeExport } from './exporters/index.js';
+import { getExporter, serializeExport } from './exporters/index.js';
+
+const COMMON_FORMATS = ['csv', 'xlsx', 'json', 'markdown', 'pdf', 'png'];
+const MORE_FORMATS = ['tsv', 'html', 'sql', 'ndjson'];
+const LEGACY_SAVE_FORMATS = new Set(['csv', 'markdown', 'png']);
+const NON_COPYABLE_FORMATS = new Set(['xlsx', 'pdf', 'png']);
+
+const FORMAT_META = {
+  csv: { label: 'CSV', badge: 'CSV', tone: 'green' },
+  xlsx: { label: 'XLSX', badge: 'X', tone: 'green' },
+  json: { label: 'JSON', badge: '{}', tone: 'purple' },
+  markdown: { label: 'Markdown', badge: 'MD', tone: 'slate' },
+  pdf: { label: 'PDF', badge: 'PDF', tone: 'red' },
+  png: { label: 'PNG', badge: 'PNG', tone: 'orange' },
+  tsv: { label: 'TSV', badge: 'TSV', tone: 'violet' },
+  html: { label: 'HTML', badge: '</>', tone: 'orange' },
+  sql: { label: 'SQL', badge: 'DB', tone: 'blue' },
+  ndjson: { label: 'NDJSON', badge: 'ND', tone: 'teal' }
+};
 
 let activeSource = null;
+let csvDelimiter = ',';
 
 function cleanText(value) {
   return String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
@@ -102,88 +121,24 @@ async function copyText(text) {
   }
 }
 
-function formatDescription(id) {
-  if (id === 'tsv') return 'Tab-separated data for clean copy/paste and imports';
-  if (id === 'json') return 'Structured data for apps and APIs';
-  if (id === 'html') return 'Portable HTML table markup';
-  if (id === 'xlsx') return 'Native spreadsheet workbook';
-  if (id === 'pdf') return 'Printable table document with automatic pagination';
-  if (id === 'sql') return 'SQL INSERT statements';
-  if (id === 'ndjson') return 'One JSON object per line';
-  return 'Export table';
-}
-
-function formatBadge(id) {
-  return id.toUpperCase();
-}
-
-function markTemporary(button, text) {
-  const strong = button.querySelector('strong');
-  if (!strong) return;
-  const original = strong.textContent;
-  strong.textContent = text;
-  setTimeout(() => { if (button.isConnected) strong.textContent = original; }, 1000);
-}
-
-function addNativeActions(card) {
-  if (card.querySelector('[data-tablesnap-expanded="true"]')) return;
-  const host = card.querySelector('.tablesnap-card-actions');
-  if (!host) return;
-
-  const fragment = document.createDocumentFragment();
-  listExporters().forEach((exporter) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.expandedFormat = exporter.id;
-    button.dataset.tablesnapExpanded = 'true';
-    button.innerHTML = `<span class="format ${exporter.id}">${formatBadge(exporter.id)}</span><span><strong>Save as ${exporter.label}</strong><small>${formatDescription(exporter.id)}</small></span>`;
-    fragment.append(button);
-  });
-  host.append(fragment);
-
-  const copyHost = card.querySelector('.tablesnap-copy-actions');
-  if (copyHost) addCopyActions(copyHost);
-}
-
-function addModernActions(card) {
-  if (card.querySelector('[data-tablesnap-expanded="true"]')) return;
-  const host = card.querySelector('.tablesnap-modern-actions');
-  if (!host) return;
-
-  listExporters().forEach((exporter) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.expandedFormat = exporter.id;
-    button.dataset.tablesnapExpanded = 'true';
-    button.innerHTML = `<b>${formatBadge(exporter.id)}</b><span><strong>Save as ${exporter.label}</strong><small>${formatDescription(exporter.id)}</small></span>`;
-    host.append(button);
-  });
-
-  const copyHost = card.querySelector('.tablesnap-modern-copy');
-  if (copyHost) addCopyActions(copyHost, true);
-}
-
-function addCopyActions(host, modern = false) {
-  if (host.querySelector('[data-expanded-copy]')) return;
-  listExporters()
-    .filter((exporter) => exporter.copyable !== false && typeof exporter.serialize === 'function')
-    .forEach((exporter) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.dataset.expandedCopy = exporter.id;
-      if (modern) {
-        button.textContent = `Copy ${exporter.label}`;
-      } else {
-        button.innerHTML = `<span class="copy-label"><strong>Copy as ${exporter.label}</strong><small>Copy to clipboard</small></span>`;
-      }
-      host.append(button);
-    });
-}
-
 function exporterOptions() {
-  return {
-    tableName: 'table_data'
-  };
+  return { tableName: 'table_data' };
+}
+
+function normalizedFormat(format) {
+  return format === 'image' ? 'png' : format;
+}
+
+function legacyFormat(format) {
+  return format === 'png' ? 'image' : format;
+}
+
+function getLegacySaveButton(card, format) {
+  const value = legacyFormat(format);
+  if (card.classList.contains('tablesnap-modern-export-card')) {
+    return card.querySelector(`[data-modern-format="${value}"]`);
+  }
+  return card.querySelector(`[data-format="${value}"]`);
 }
 
 async function handleExpandedExport(button, format) {
@@ -196,64 +151,160 @@ async function handleExpandedExport(button, format) {
     const blob = typeof exporter.createBlob === 'function'
       ? await exporter.createBlob(parsed, exporterOptions())
       : new Blob([serializeExport(format, parsed, exporterOptions())], { type: exporter.mimeType });
-
     downloadBlob(blob, createFilename(exporter.extension));
-    markTemporary(button, 'Saved');
+    showActionState(button, 'Saved');
   } finally {
     setTimeout(() => { if (button.isConnected) button.disabled = false; }, 700);
   }
 }
 
-async function handleExpandedCopy(button, format) {
+async function copyFormat(button, format) {
   const parsed = parseActiveSource();
-  const exporter = getExporter(format);
-  if (!parsed?.headers?.length || !exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') {
-    throw new Error('Format is not copyable');
+  if (!parsed?.headers?.length) throw new Error('No table data detected');
+
+  let output;
+  if (format === 'csv') {
+    output = window.__TableSnapCore?.toCsv?.(parsed, csvDelimiter);
+  } else if (format === 'markdown') {
+    output = window.__TableSnapCore?.toMarkdown?.(parsed);
+  } else {
+    const exporter = getExporter(format);
+    if (!exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') {
+      throw new Error('Format is not copyable');
+    }
+    output = serializeExport(format, parsed, exporterOptions());
   }
 
-  await copyText(serializeExport(format, parsed, exporterOptions()));
-  if (button.querySelector('strong')) markTemporary(button, 'Copied');
-  else {
-    const original = button.textContent;
-    button.textContent = 'Copied';
-    setTimeout(() => { if (button.isConnected) button.textContent = original; }, 1000);
+  if (typeof output !== 'string') throw new Error('Unable to serialize table');
+  await copyText(output);
+  showActionState(button, 'Copied');
+}
+
+function showActionState(button, text) {
+  const label = button.querySelector('.tablesnap-tile-action-label');
+  if (!label) return;
+  const original = label.textContent;
+  label.textContent = text;
+  setTimeout(() => {
+    if (button.isConnected) label.textContent = original;
+  }, 900);
+}
+
+function actionIcon(type) {
+  if (type === 'save') {
+    return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9M4 14v2h12v-2"/></svg>';
   }
+  return '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="9" height="10" rx="1.5"/><path d="M13 6V4H4v9h3"/></svg>';
+}
+
+function tileMarkup(format) {
+  const meta = FORMAT_META[format];
+  const copyable = !NON_COPYABLE_FORMATS.has(format);
+  return `
+    <div class="tablesnap-format-tile" data-tile-format="${format}">
+      <div class="tablesnap-format-visual">
+        <span class="tablesnap-format-badge tone-${meta.tone}">${meta.badge}</span>
+        <span class="tablesnap-format-label">${meta.label}</span>
+      </div>
+      <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
+      <div class="tablesnap-tile-actions">
+        <button type="button" class="tablesnap-tile-action is-save" data-tile-save="${format}">
+          ${actionIcon('save')}<span class="tablesnap-tile-action-label">Save</span>
+        </button>
+        ${copyable ? `<button type="button" class="tablesnap-tile-action is-copy" data-tile-copy="${format}">
+          ${actionIcon('copy')}<span class="tablesnap-tile-action-label">Copy</span>
+        </button>` : ''}
+      </div>
+    </div>`;
+}
+
+function sectionMarkup(title, formats) {
+  return `
+    <section class="tablesnap-format-section">
+      <div class="tablesnap-format-section-title">${title}</div>
+      <div class="tablesnap-format-grid">${formats.map(tileMarkup).join('')}</div>
+    </section>`;
+}
+
+function modernizeCard(card) {
+  if (card.dataset.tablesnapModernized === 'true') return;
+
+  const legacyButtons = new Map();
+  LEGACY_SAVE_FORMATS.forEach((format) => {
+    const button = getLegacySaveButton(card, format);
+    if (button) legacyButtons.set(format, button);
+  });
+
+  const header = card.querySelector('.tablesnap-card-header, .tablesnap-modern-head');
+  if (header) {
+    const strong = header.querySelector('strong');
+    const subtitle = header.querySelector('span:last-child');
+    if (strong) strong.textContent = 'Export Table';
+    if (subtitle && !subtitle.querySelector('svg')) subtitle.textContent = 'Choose a format';
+  }
+
+  const oldActions = card.querySelector('.tablesnap-card-actions, .tablesnap-modern-actions');
+  const oldCopy = card.querySelector('.tablesnap-copy-actions, .tablesnap-modern-copy');
+  if (!oldActions) return;
+
+  oldActions.classList.add('tablesnap-legacy-actions-hidden');
+  oldCopy?.classList.add('tablesnap-legacy-actions-hidden');
+
+  const ui = document.createElement('div');
+  ui.className = 'tablesnap-compact-export-ui';
+  ui.innerHTML = `${sectionMarkup('Common', COMMON_FORMATS)}${sectionMarkup('More', MORE_FORMATS)}`;
+  oldActions.after(ui);
+
+  ui.addEventListener('click', (event) => {
+    const saveButton = event.target.closest('[data-tile-save]');
+    if (saveButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const format = normalizedFormat(saveButton.dataset.tileSave);
+      if (LEGACY_SAVE_FORMATS.has(format)) {
+        const original = legacyButtons.get(format);
+        if (original) original.click();
+      } else {
+        handleExpandedExport(saveButton, format)
+          .catch((error) => console.error('[TableSnap] Export failed:', error));
+      }
+      return;
+    }
+
+    const copyButton = event.target.closest('[data-tile-copy]');
+    if (!copyButton) return;
+    event.preventDefault();
+    event.stopPropagation();
+    copyFormat(copyButton, normalizedFormat(copyButton.dataset.tileCopy))
+      .catch((error) => console.error('[TableSnap] Copy failed:', error));
+  }, true);
+
+  card.dataset.tablesnapModernized = 'true';
 }
 
 document.addEventListener('click', (event) => {
   const icon = event.target.closest?.('.tablesnap-export-icon');
-  if (icon) {
-    if (icon.dataset.tablesnapModern === 'true') {
-      const element = getModernSourceForIcon(icon);
-      if (element) activeSource = { type: 'modern', element };
-    } else {
-      const element = getNativeSourceForIcon(icon);
-      if (element) activeSource = { type: 'native', element };
-    }
-    return;
-  }
+  if (!icon) return;
 
-  const exportButton = event.target.closest?.('[data-expanded-format]');
-  if (exportButton) {
-    event.preventDefault();
-    event.stopPropagation();
-    handleExpandedExport(exportButton, exportButton.dataset.expandedFormat)
-      .catch((error) => console.error('[TableSnap] Expanded export failed:', error));
-    return;
-  }
-
-  const copyButton = event.target.closest?.('[data-expanded-copy]');
-  if (copyButton) {
-    event.preventDefault();
-    event.stopPropagation();
-    handleExpandedCopy(copyButton, copyButton.dataset.expandedCopy)
-      .catch((error) => console.error('[TableSnap] Expanded copy failed:', error));
+  if (icon.dataset.tablesnapModern === 'true') {
+    const element = getModernSourceForIcon(icon);
+    if (element) activeSource = { type: 'modern', element };
+  } else {
+    const element = getNativeSourceForIcon(icon);
+    if (element) activeSource = { type: 'native', element };
   }
 }, true);
 
 const observer = new MutationObserver(() => {
-  document.querySelectorAll('.tablesnap-export-card').forEach(addNativeActions);
-  document.querySelectorAll('.tablesnap-modern-export-card').forEach(addModernActions);
+  document.querySelectorAll('.tablesnap-export-card, .tablesnap-modern-export-card').forEach(modernizeCard);
 });
 
 observer.observe(document.documentElement, { childList: true, subtree: true });
+
+chrome.storage.local.get({ csvDelimiter: ',' }).then((stored) => {
+  csvDelimiter = stored.csvDelimiter || ',';
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.csvDelimiter) csvDelimiter = changes.csvDelimiter.newValue || ',';
+});
