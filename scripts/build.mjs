@@ -54,6 +54,7 @@ await cp('src/content/card-position-fix.js', 'dist/content/card-position-fix.js'
 await cp('src/content/image-background-fix.js', 'dist/content/image-background-fix.js');
 await cp('src/content/export-error-state.js', 'dist/content/export-error-state.js');
 await cp('src/content/tabler-format-icons.js', 'dist/content/tabler-format-icons.js');
+await cp('src/content/export-action-state.js', 'dist/content/export-action-state.js');
 
 await build({
   entryPoints: ['src/background/service-worker.js'],
@@ -67,6 +68,7 @@ await cp('manifest.json', 'dist/manifest.json');
 await cp('src/content/content.css', 'dist/content/content.css');
 await cp('src/content/export-grid-v2.css', 'dist/content/export-grid-v2.css');
 await cp('src/content/tabler-format-icons.css', 'dist/content/tabler-format-icons.css');
+await cp('src/content/export-action-state.css', 'dist/content/export-action-state.css');
 await cp('src/content/save-loading.css', 'dist/content/save-loading.css');
 await cp('src/popup/popup.html', 'dist/popup/popup.html');
 await cp('src/popup/popup.css', 'dist/popup/popup.css');
