@@ -1,9 +1,8 @@
+import html2canvas from 'html2canvas';
 import { getExporter, serializeExport } from './exporters/index.js';
 
 const FORMATS = ['csv', 'xlsx', 'json', 'markdown', 'png', 'pdf', 'tsv', 'html', 'sql', 'ndjson'];
-const LEGACY_SAVE_FORMATS = new Set(['csv', 'markdown', 'png']);
 const NON_COPYABLE_FORMATS = new Set(['xlsx', 'pdf', 'png']);
-
 const FORMAT_META = {
   csv: { label: 'CSV', tone: 'green' },
   xlsx: { label: 'XLSX', tone: 'excel' },
@@ -19,6 +18,7 @@ const FORMAT_META = {
 
 let activeSource = null;
 let csvDelimiter = ',';
+let imageScale = 2;
 
 function cleanText(value) {
   return String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
@@ -29,8 +29,8 @@ function getNativeSourceForIcon(icon) {
   const x = rect.left + rect.width / 2;
   const y = rect.top + rect.height / 2;
   const candidates = [...document.querySelectorAll('table')].filter((table) => {
-    const tableRect = table.getBoundingClientRect();
-    return x >= tableRect.left - 20 && x <= tableRect.right + 20 && y >= tableRect.top - 20 && y <= tableRect.bottom + 20;
+    const r = table.getBoundingClientRect();
+    return x >= r.left - 20 && x <= r.right + 20 && y >= r.top - 20 && y <= r.bottom + 20;
   });
   if (!candidates.length) return null;
   const presentation = candidates.sort((a, b) => {
@@ -50,8 +50,8 @@ function getModernSourceForIcon(icon) {
   const candidates = [...document.querySelectorAll('[role="table"], [role="grid"], [role="treegrid"], div, section')]
     .filter((element) => {
       if (!modern.getModernType(element)) return false;
-      const targetRect = element.getBoundingClientRect();
-      return x >= targetRect.left - 20 && x <= targetRect.right + 20 && y >= targetRect.top - 20 && y <= targetRect.bottom + 20;
+      const r = element.getBoundingClientRect();
+      return x >= r.left - 20 && x <= r.right + 20 && y >= r.top - 20 && y <= r.bottom + 20;
     });
   if (!candidates.length) return null;
   return candidates.sort((a, b) => {
@@ -63,9 +63,7 @@ function getModernSourceForIcon(icon) {
 
 function parseActiveSource() {
   if (!activeSource) return null;
-  if (activeSource.type === 'modern') {
-    return window.__TableSnapModern?.parseModernTable?.(activeSource.element) || null;
-  }
+  if (activeSource.type === 'modern') return window.__TableSnapModern?.parseModernTable?.(activeSource.element) || null;
   return window.__TableSnapCore?.parseTable?.(activeSource.element) || null;
 }
 
@@ -124,36 +122,61 @@ function exporterOptions() {
   return { tableName: 'table_data' };
 }
 
-function normalizedFormat(format) {
-  return format === 'image' ? 'png' : format;
+function showActionState(button, text) {
+  const label = button.querySelector('.tablesnap-tile-action-label');
+  if (!label) return;
+  const original = label.textContent;
+  label.textContent = text;
+  setTimeout(() => { if (button.isConnected) label.textContent = original; }, 850);
 }
 
-function legacyFormat(format) {
-  return format === 'png' ? 'image' : format;
+function notifySave(button, ok = true) {
+  button.dispatchEvent(new CustomEvent(ok ? 'tablesnap:save-complete' : 'tablesnap:save-failed'));
 }
 
-function getLegacySaveButton(card, format) {
-  const value = legacyFormat(format);
-  if (card.classList.contains('tablesnap-modern-export-card')) {
-    return card.querySelector(`[data-modern-format="${value}"]`);
-  }
-  return card.querySelector(`[data-format="${value}"]`);
+async function createPngBlob() {
+  const target = activeSource?.element;
+  if (!target) throw new Error('No table target detected');
+  const canvas = await html2canvas(target, {
+    backgroundColor: null,
+    scale: imageScale,
+    useCORS: true,
+    logging: false,
+    windowWidth: Math.max(document.documentElement.scrollWidth, target.scrollWidth || 0),
+    onclone: (doc) => doc.querySelectorAll('.tablesnap-export-icon, .tablesnap-export-card, .tablesnap-modern-export-card').forEach((node) => node.remove())
+  });
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Failed to create PNG')), 'image/png');
+  });
 }
 
-async function handleExpandedExport(button, format) {
-  const parsed = parseActiveSource();
-  const exporter = getExporter(format);
-  if (!parsed?.headers?.length || !exporter) throw new Error('No table data detected');
-
-  button.disabled = true;
+async function saveFormat(button, format) {
   try {
-    const blob = typeof exporter.createBlob === 'function'
-      ? await exporter.createBlob(parsed, exporterOptions())
-      : new Blob([serializeExport(format, parsed, exporterOptions())], { type: exporter.mimeType });
-    downloadBlob(blob, createFilename(exporter.extension));
-    showActionState(button, 'Saved');
-  } finally {
-    setTimeout(() => { if (button.isConnected) button.disabled = false; }, 700);
+    const parsed = parseActiveSource();
+    if (!parsed?.headers?.length) throw new Error('No table data detected');
+
+    if (format === 'csv') {
+      const text = `\uFEFF${window.__TableSnapCore?.toCsv?.(parsed, csvDelimiter) || ''}`;
+      downloadBlob(new Blob([text], { type: 'text/csv;charset=utf-8' }), createFilename('csv'));
+    } else if (format === 'markdown') {
+      const text = window.__TableSnapCore?.toMarkdown?.(parsed) || '';
+      downloadBlob(new Blob([text], { type: 'text/markdown;charset=utf-8' }), createFilename('md'));
+    } else if (format === 'png') {
+      const blob = await createPngBlob();
+      downloadBlob(blob, createFilename('png'));
+    } else {
+      const exporter = getExporter(format);
+      if (!exporter) throw new Error(`Unsupported format: ${format}`);
+      const blob = typeof exporter.createBlob === 'function'
+        ? await exporter.createBlob(parsed, exporterOptions())
+        : new Blob([serializeExport(format, parsed, exporterOptions())], { type: exporter.mimeType });
+      downloadBlob(blob, createFilename(exporter.extension));
+    }
+
+    notifySave(button, true);
+  } catch (error) {
+    notifySave(button, false);
+    console.error('[TableSnap] Export failed:', error);
   }
 }
 
@@ -162,15 +185,11 @@ async function copyFormat(button, format) {
   if (!parsed?.headers?.length) throw new Error('No table data detected');
 
   let output;
-  if (format === 'csv') {
-    output = window.__TableSnapCore?.toCsv?.(parsed, csvDelimiter);
-  } else if (format === 'markdown') {
-    output = window.__TableSnapCore?.toMarkdown?.(parsed);
-  } else {
+  if (format === 'csv') output = window.__TableSnapCore?.toCsv?.(parsed, csvDelimiter);
+  else if (format === 'markdown') output = window.__TableSnapCore?.toMarkdown?.(parsed);
+  else {
     const exporter = getExporter(format);
-    if (!exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') {
-      throw new Error('Format is not copyable');
-    }
+    if (!exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') throw new Error('Format is not copyable');
     output = serializeExport(format, parsed, exporterOptions());
   }
 
@@ -179,68 +198,33 @@ async function copyFormat(button, format) {
   showActionState(button, 'Copied');
 }
 
-function showActionState(button, text) {
-  const label = button.querySelector('.tablesnap-tile-action-label');
-  if (!label) return;
-  const original = label.textContent;
-  label.textContent = text;
-  setTimeout(() => {
-    if (button.isConnected) label.textContent = original;
-  }, 900);
-}
-
 function actionIcon(type) {
-  if (type === 'save') {
-    return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9M4 14v2h12v-2"/></svg>';
-  }
+  if (type === 'save') return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9M4 14v2h12v-2"/></svg>';
   return '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="9" height="10" rx="1.5"/><path d="M13 6V4H4v9h3"/></svg>';
 }
 
-function formatIcon(format) {
-  const icons = {
-    csv: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><rect class="glyph" x="10.5" y="10.5" width="13" height="13" rx="2"/><path class="glyph" d="M14.8 10.5v13M19.2 10.5v13M10.5 15h13M10.5 19h13"/></svg>',
-    xlsx: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="xlsx-back" x="12" y="5" width="17" height="24" rx="4"/><rect class="xlsx-front" x="5" y="8" width="15" height="18" rx="3"/><path class="glyph" d="m9 13 7 8M16 13l-7 8"/></svg>',
-    json: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="M14.5 10c-2.2 0-2.2 2.2-2.2 3.4 0 1.1-.8 1.8-2 1.8 1.2 0 2 .7 2 1.8 0 1.2 0 3.4 2.2 3.4M19.5 10c2.2 0 2.2 2.2 2.2 3.4 0 1.1.8 1.8 2 1.8-1.2 0-2 .7-2 1.8 0 1.2 0 3.4-2.2 3.4"/></svg>',
-    markdown: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="M9.5 12.5v9m0-9 4 5 4-5v9M22 12.5v9m0 0-2.7-2.7M22 21.5l2.7-2.7"/></svg>',
-    png: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><circle class="glyph" cx="12.5" cy="12.5" r="2"/><path class="glyph" d="m9 24 6-6 3.5 3.5 2.5-2.5 4 5z"/></svg>',
-    pdf: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="20.5" text-anchor="middle">PDF</text></svg>',
-    tsv: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="20.5" text-anchor="middle">TSV</text></svg>',
-    html: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="m14.5 11-6 6 6 6M19.5 11l6 6-6 6"/></svg>',
-    sql: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><ellipse class="glyph" cx="17" cy="11" rx="7" ry="3"/><path class="glyph" d="M10 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6M10 17v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
-    ndjson: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="18.8" text-anchor="middle">NDJ</text></svg>'
-  };
-  return icons[format] || '';
+function placeholderIcon(format) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>`;
 }
 
 function tileMarkup(format) {
   const meta = FORMAT_META[format];
   const copyable = !NON_COPYABLE_FORMATS.has(format);
-  return `
-    <div class="tablesnap-format-tile" data-tile-format="${format}">
-      <div class="tablesnap-format-visual">
-        <span class="tablesnap-format-icon tone-${meta.tone}">${formatIcon(format)}</span>
-        <span class="tablesnap-format-label">${meta.label}</span>
-      </div>
-      <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
-      <div class="tablesnap-tile-actions">
-        <button type="button" class="tablesnap-tile-action is-save" data-tile-save="${format}">
-          ${actionIcon('save')}<span class="tablesnap-tile-action-label">Save</span>
-        </button>
-        ${copyable ? `<button type="button" class="tablesnap-tile-action is-copy" data-tile-copy="${format}">
-          ${actionIcon('copy')}<span class="tablesnap-tile-action-label">Copy</span>
-        </button>` : ''}
-      </div>
-    </div>`;
+  return `<div class="tablesnap-format-tile" data-tile-format="${format}">
+    <div class="tablesnap-format-visual">
+      <span class="tablesnap-format-icon tone-${meta.tone}">${placeholderIcon(format)}</span>
+      <span class="tablesnap-format-label">${meta.label}</span>
+    </div>
+    <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
+    <div class="tablesnap-tile-actions">
+      <button type="button" class="tablesnap-tile-action is-save" data-tile-save="${format}">${actionIcon('save')}<span class="tablesnap-tile-action-label">Save</span></button>
+      ${copyable ? `<button type="button" class="tablesnap-tile-action is-copy" data-tile-copy="${format}">${actionIcon('copy')}<span class="tablesnap-tile-action-label">Copy</span></button>` : ''}
+    </div>
+  </div>`;
 }
 
 function modernizeCard(card) {
   if (card.dataset.tablesnapModernized === 'true') return;
-
-  const legacyButtons = new Map();
-  LEGACY_SAVE_FORMATS.forEach((format) => {
-    const button = getLegacySaveButton(card, format);
-    if (button) legacyButtons.set(format, button);
-  });
 
   const header = card.querySelector('.tablesnap-card-header, .tablesnap-modern-head');
   if (header) {
@@ -253,7 +237,6 @@ function modernizeCard(card) {
   const oldActions = card.querySelector('.tablesnap-card-actions, .tablesnap-modern-actions');
   const oldCopy = card.querySelector('.tablesnap-copy-actions, .tablesnap-modern-copy');
   if (!oldActions) return;
-
   oldActions.classList.add('tablesnap-legacy-actions-hidden');
   oldCopy?.classList.add('tablesnap-legacy-actions-hidden');
 
@@ -267,14 +250,7 @@ function modernizeCard(card) {
     if (saveButton) {
       event.preventDefault();
       event.stopPropagation();
-      const format = normalizedFormat(saveButton.dataset.tileSave);
-      if (LEGACY_SAVE_FORMATS.has(format)) {
-        const original = legacyButtons.get(format);
-        if (original) original.click();
-      } else {
-        handleExpandedExport(saveButton, format)
-          .catch((error) => console.error('[TableSnap] Export failed:', error));
-      }
+      saveFormat(saveButton, saveButton.dataset.tileSave);
       return;
     }
 
@@ -282,7 +258,7 @@ function modernizeCard(card) {
     if (!copyButton) return;
     event.preventDefault();
     event.stopPropagation();
-    copyFormat(copyButton, normalizedFormat(copyButton.dataset.tileCopy))
+    copyFormat(copyButton, copyButton.dataset.tileCopy)
       .catch((error) => console.error('[TableSnap] Copy failed:', error));
   }, true);
 
@@ -292,7 +268,6 @@ function modernizeCard(card) {
 document.addEventListener('click', (event) => {
   const icon = event.target.closest?.('.tablesnap-export-icon');
   if (!icon) return;
-
   if (icon.dataset.tablesnapModern === 'true') {
     const element = getModernSourceForIcon(icon);
     if (element) activeSource = { type: 'modern', element };
@@ -302,16 +277,17 @@ document.addEventListener('click', (event) => {
   }
 }, true);
 
-const observer = new MutationObserver(() => {
+new MutationObserver(() => {
   document.querySelectorAll('.tablesnap-export-card, .tablesnap-modern-export-card').forEach(modernizeCard);
-});
+}).observe(document.documentElement, { childList: true, subtree: true });
 
-observer.observe(document.documentElement, { childList: true, subtree: true });
-
-chrome.storage.local.get({ csvDelimiter: ',' }).then((stored) => {
+chrome.storage.local.get({ csvDelimiter: ',', imageScale: 2 }).then((stored) => {
   csvDelimiter = stored.csvDelimiter || ',';
+  imageScale = Number(stored.imageScale) || 2;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes.csvDelimiter) csvDelimiter = changes.csvDelimiter.newValue || ',';
+  if (area !== 'local') return;
+  if (changes.csvDelimiter) csvDelimiter = changes.csvDelimiter.newValue || ',';
+  if (changes.imageScale) imageScale = Number(changes.imageScale.newValue) || 2;
 });
