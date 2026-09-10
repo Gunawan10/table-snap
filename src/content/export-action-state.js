@@ -1,67 +1,41 @@
 (() => {
   const CARD_SELECTOR = '.tablesnap-export-card[data-tablesnap-modernized="true"], .tablesnap-modern-export-card[data-tablesnap-modernized="true"]';
   const ACTION_SELECTOR = '.tablesnap-tile-action';
-  const RESULT_LABELS = new Set(['Saved', 'Copied', 'Failed']);
   const FALLBACK_UNLOCK_MS = 12000;
 
-  function setBusy(card, button, type) {
+  function unlock(card, button, tile) {
+    delete card.dataset.exportBusy;
+    delete card.dataset.exportBusyType;
+    tile?.removeAttribute('data-processing');
+    tile?.removeAttribute('data-processing-label');
+    button?.removeAttribute('data-action-loading');
+    if (card.isConnected) {
+      card.querySelectorAll(ACTION_SELECTOR).forEach((action) => { action.disabled = false; });
+    }
+  }
+
+  function setBusy(card, button) {
     if (!card || !button || card.dataset.exportBusy === 'true') return false;
 
     const tile = button.closest('.tablesnap-format-tile');
-    const loadingText = type === 'copy' ? 'Copying...' : 'Saving...';
-
     card.dataset.exportBusy = 'true';
-    card.dataset.exportBusyType = type;
+    card.dataset.exportBusyType = 'save';
     tile?.setAttribute('data-processing', 'true');
-    tile?.setAttribute('data-processing-label', loadingText);
+    tile?.setAttribute('data-processing-label', 'Saving...');
     button.dataset.actionLoading = 'true';
 
     card.querySelectorAll(ACTION_SELECTOR).forEach((action) => {
       if (action !== button) action.disabled = true;
     });
 
-    const label = button.querySelector('.tablesnap-tile-action-label');
-    let completed = false;
-    let observer = null;
-    let fallbackTimer = null;
-
-    const unlock = () => {
-      if (completed) return;
-      completed = true;
-      observer?.disconnect();
+    const fallbackTimer = setTimeout(() => unlock(card, button, tile), FALLBACK_UNLOCK_MS);
+    const done = () => {
       clearTimeout(fallbackTimer);
-      delete card.dataset.exportBusy;
-      delete card.dataset.exportBusyType;
-      tile?.removeAttribute('data-processing');
-      tile?.removeAttribute('data-processing-label');
-      delete button.dataset.actionLoading;
-      if (card.isConnected) {
-        card.querySelectorAll(ACTION_SELECTOR).forEach((action) => { action.disabled = false; });
-      }
+      unlock(card, button, tile);
     };
 
-    if (label) {
-      observer = new MutationObserver(() => {
-        if (RESULT_LABELS.has(label.textContent?.trim())) {
-          setTimeout(unlock, 700);
-        }
-      });
-      observer.observe(label, { childList: true, characterData: true, subtree: true });
-    }
-
-    const cardObserver = new MutationObserver(() => {
-      if (!card.isConnected) {
-        cardObserver.disconnect();
-        unlock();
-      }
-    });
-    cardObserver.observe(document.documentElement, { childList: true, subtree: true });
-
-    fallbackTimer = setTimeout(() => {
-      cardObserver.disconnect();
-      unlock();
-    }, FALLBACK_UNLOCK_MS);
-
+    button.addEventListener('tablesnap:save-complete', done, { once: true });
+    button.addEventListener('tablesnap:save-failed', done, { once: true });
     return true;
   }
 
@@ -72,15 +46,14 @@
     const card = button.closest(CARD_SELECTOR);
     if (!card) return;
 
+    if (button.matches('[data-tile-copy]')) return;
+
     if (card.dataset.exportBusy === 'true') {
-      if (button.dataset.actionLoading !== 'true') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
 
-    const type = button.matches('[data-tile-copy]') ? 'copy' : 'save';
-    setBusy(card, button, type);
+    setBusy(card, button);
   }, true);
 })();
