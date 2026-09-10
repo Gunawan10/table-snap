@@ -33,10 +33,11 @@
         "content/semantic-cell-content.js",
         "content/card-copy-actions.js",
         "content/expanded-export-support.js",
+        "content/tabler-format-icons.js",
         "content/card-position-fix.js",
         "content/export-error-state.js"
       ],
-      "css": ["content/content.css", "content/export-grid-v2.css", "content/save-loading.css"],
+      "css": ["content/content.css", "content/export-grid-v2.css", "content/tabler-format-icons.css", "content/save-loading.css"],
       "run_at": "document_idle"
     }
   ]
