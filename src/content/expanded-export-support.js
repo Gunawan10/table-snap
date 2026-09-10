@@ -132,6 +132,7 @@ function showActionState(button, text) {
 
 function notifySave(button, ok = true) {
   button.dispatchEvent(new CustomEvent(ok ? 'tablesnap:save-complete' : 'tablesnap:save-failed'));
+  button.blur();
 }
 
 function waitForUiPaint() {
@@ -205,6 +206,7 @@ async function copyFormat(button, format) {
   if (typeof output !== 'string') throw new Error('Unable to serialize table');
   await copyText(output);
   showActionState(button, 'Copied');
+  button.blur();
 }
 
 function actionIcon(type) {
