@@ -36,7 +36,7 @@
         "content/card-position-fix.js",
         "content/export-error-state.js"
       ],
-      "css": ["content/content.css", "content/save-loading.css"],
+      "css": ["content/content.css", "content/export-grid-v2.css", "content/save-loading.css"],
       "run_at": "document_idle"
     }
   ]
