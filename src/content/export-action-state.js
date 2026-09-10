@@ -8,11 +8,13 @@
     if (!card || !button || card.dataset.exportBusy === 'true') return false;
 
     const tile = button.closest('.tablesnap-format-tile');
+    const loadingText = type === 'copy' ? 'Copying...' : 'Saving...';
+
     card.dataset.exportBusy = 'true';
     card.dataset.exportBusyType = type;
     tile?.setAttribute('data-processing', 'true');
+    tile?.setAttribute('data-processing-label', loadingText);
     button.dataset.actionLoading = 'true';
-    button.dataset.loadingText = type === 'copy' ? 'Copying...' : 'Saving...';
 
     card.querySelectorAll(ACTION_SELECTOR).forEach((action) => {
       if (action !== button) action.disabled = true;
@@ -31,8 +33,8 @@
       delete card.dataset.exportBusy;
       delete card.dataset.exportBusyType;
       tile?.removeAttribute('data-processing');
+      tile?.removeAttribute('data-processing-label');
       delete button.dataset.actionLoading;
-      delete button.dataset.loadingText;
       if (card.isConnected) {
         card.querySelectorAll(ACTION_SELECTOR).forEach((action) => { action.disabled = false; });
       }
