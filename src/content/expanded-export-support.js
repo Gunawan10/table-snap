@@ -134,6 +134,12 @@ function notifySave(button, ok = true) {
   button.dispatchEvent(new CustomEvent(ok ? 'tablesnap:save-complete' : 'tablesnap:save-failed'));
 }
 
+function waitForUiPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
 async function createPngBlob() {
   const target = activeSource?.element;
   if (!target) throw new Error('No table target detected');
@@ -152,6 +158,9 @@ async function createPngBlob() {
 
 async function saveFormat(button, format) {
   try {
+    // Let loading state render before parsing or heavy exporters (especially html2canvas for PNG).
+    await waitForUiPaint();
+
     const parsed = parseActiveSource();
     if (!parsed?.headers?.length) throw new Error('No table data detected');
 
