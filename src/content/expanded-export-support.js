@@ -1,21 +1,20 @@
 import { getExporter, serializeExport } from './exporters/index.js';
 
-const COMMON_FORMATS = ['csv', 'xlsx', 'json', 'markdown', 'pdf', 'png'];
-const MORE_FORMATS = ['tsv', 'html', 'sql', 'ndjson'];
+const FORMATS = ['csv', 'xlsx', 'json', 'markdown', 'png', 'pdf', 'tsv', 'html', 'sql', 'ndjson'];
 const LEGACY_SAVE_FORMATS = new Set(['csv', 'markdown', 'png']);
 const NON_COPYABLE_FORMATS = new Set(['xlsx', 'pdf', 'png']);
 
 const FORMAT_META = {
-  csv: { label: 'CSV', badge: 'CSV', tone: 'green' },
-  xlsx: { label: 'XLSX', badge: 'X', tone: 'green' },
-  json: { label: 'JSON', badge: '{}', tone: 'purple' },
-  markdown: { label: 'Markdown', badge: 'MD', tone: 'slate' },
-  pdf: { label: 'PDF', badge: 'PDF', tone: 'red' },
-  png: { label: 'PNG', badge: 'PNG', tone: 'orange' },
-  tsv: { label: 'TSV', badge: 'TSV', tone: 'violet' },
-  html: { label: 'HTML', badge: '</>', tone: 'orange' },
-  sql: { label: 'SQL', badge: 'DB', tone: 'blue' },
-  ndjson: { label: 'NDJSON', badge: 'ND', tone: 'teal' }
+  csv: { label: 'CSV', tone: 'green' },
+  xlsx: { label: 'XLSX', tone: 'excel' },
+  json: { label: 'JSON', tone: 'purple' },
+  markdown: { label: 'Markdown', tone: 'slate' },
+  png: { label: 'PNG', tone: 'orange' },
+  pdf: { label: 'PDF', tone: 'red' },
+  tsv: { label: 'TSV', tone: 'violet' },
+  html: { label: 'HTML', tone: 'orange' },
+  sql: { label: 'SQL', tone: 'blue' },
+  ndjson: { label: 'NDJSON', tone: 'teal' }
 };
 
 let activeSource = null;
@@ -197,13 +196,29 @@ function actionIcon(type) {
   return '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="9" height="10" rx="1.5"/><path d="M13 6V4H4v9h3"/></svg>';
 }
 
+function formatIcon(format) {
+  const icons = {
+    csv: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><rect x="11.5" y="14" width="11" height="8" rx="1.5"/><path d="M15.2 14v8M18.8 14v8M11.5 18h11"/></svg>',
+    xlsx: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="sheet" d="M12 4h13a3 3 0 0 1 3 3v20a3 3 0 0 1-3 3H12z"/><rect class="front" x="5" y="8" width="14" height="18" rx="2"/><path d="m9 13 6 8M15 13l-6 8"/></svg>',
+    json: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="M15 13c-2 0-2 2-2 3s-1 1.5-2 1.5c1 0 2 .5 2 1.5s0 3 2 3M19 13c2 0 2 2 2 3s1 1.5 2 1.5c-1 0-2 .5-2 1.5s0 3-2 3"/></svg>',
+    markdown: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="M11 15v7m0-7 3 4 3-4v7M20 15v7m0 0-2-2m2 2 2-2"/></svg>',
+    png: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><circle cx="14" cy="15" r="2"/><path d="m11 24 5-5 3 3 2-2 3 4z"/></svg>',
+    pdf: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="22" text-anchor="middle">PDF</text></svg>',
+    tsv: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="22" text-anchor="middle">TSV</text></svg>',
+    html: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="m15 14-4 4 4 4M19 14l4 4-4 4"/></svg>',
+    sql: '<svg viewBox="0 0 34 34" aria-hidden="true"><ellipse cx="17" cy="9" rx="9" ry="4"/><path d="M8 9v7c0 2.2 4 4 9 4s9-1.8 9-4V9M8 16v7c0 2.2 4 4 9 4s9-1.8 9-4v-7"/></svg>',
+    ndjson: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="21" text-anchor="middle">ND</text></svg>'
+  };
+  return icons[format] || '';
+}
+
 function tileMarkup(format) {
   const meta = FORMAT_META[format];
   const copyable = !NON_COPYABLE_FORMATS.has(format);
   return `
     <div class="tablesnap-format-tile" data-tile-format="${format}">
       <div class="tablesnap-format-visual">
-        <span class="tablesnap-format-badge tone-${meta.tone}">${meta.badge}</span>
+        <span class="tablesnap-format-icon tone-${meta.tone}">${formatIcon(format)}</span>
         <span class="tablesnap-format-label">${meta.label}</span>
       </div>
       <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
@@ -216,14 +231,6 @@ function tileMarkup(format) {
         </button>` : ''}
       </div>
     </div>`;
-}
-
-function sectionMarkup(title, formats) {
-  return `
-    <section class="tablesnap-format-section">
-      <div class="tablesnap-format-section-title">${title}</div>
-      <div class="tablesnap-format-grid">${formats.map(tileMarkup).join('')}</div>
-    </section>`;
 }
 
 function modernizeCard(card) {
@@ -240,7 +247,7 @@ function modernizeCard(card) {
     const strong = header.querySelector('strong');
     const subtitle = header.querySelector('span:last-child');
     if (strong) strong.textContent = 'Export Table';
-    if (subtitle && !subtitle.querySelector('svg')) subtitle.textContent = 'Choose a format';
+    if (subtitle && !subtitle.querySelector('svg')) subtitle.textContent = 'Choose a format to export';
   }
 
   const oldActions = card.querySelector('.tablesnap-card-actions, .tablesnap-modern-actions');
@@ -252,7 +259,7 @@ function modernizeCard(card) {
 
   const ui = document.createElement('div');
   ui.className = 'tablesnap-compact-export-ui';
-  ui.innerHTML = `${sectionMarkup('Common', COMMON_FORMATS)}${sectionMarkup('More', MORE_FORMATS)}`;
+  ui.innerHTML = `<div class="tablesnap-format-grid">${FORMATS.map(tileMarkup).join('')}</div>`;
   oldActions.after(ui);
 
   ui.addEventListener('click', (event) => {
