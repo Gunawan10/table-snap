@@ -198,16 +198,16 @@ function actionIcon(type) {
 
 function formatIcon(format) {
   const icons = {
-    csv: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><rect x="11.5" y="14" width="11" height="8" rx="1.5"/><path d="M15.2 14v8M18.8 14v8M11.5 18h11"/></svg>',
-    xlsx: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="sheet" d="M12 4h13a3 3 0 0 1 3 3v20a3 3 0 0 1-3 3H12z"/><rect class="front" x="5" y="8" width="14" height="18" rx="2"/><path d="m9 13 6 8M15 13l-6 8"/></svg>',
-    json: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="M15 13c-2 0-2 2-2 3s-1 1.5-2 1.5c1 0 2 .5 2 1.5s0 3 2 3M19 13c2 0 2 2 2 3s1 1.5 2 1.5c-1 0-2 .5-2 1.5s0 3-2 3"/></svg>',
-    markdown: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="M11 15v7m0-7 3 4 3-4v7M20 15v7m0 0-2-2m2 2 2-2"/></svg>',
-    png: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><circle cx="14" cy="15" r="2"/><path d="m11 24 5-5 3 3 2-2 3 4z"/></svg>',
-    pdf: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="22" text-anchor="middle">PDF</text></svg>',
-    tsv: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="22" text-anchor="middle">TSV</text></svg>',
-    html: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><path d="m15 14-4 4 4 4M19 14l4 4-4 4"/></svg>',
-    sql: '<svg viewBox="0 0 34 34" aria-hidden="true"><ellipse cx="17" cy="9" rx="9" ry="4"/><path d="M8 9v7c0 2.2 4 4 9 4s9-1.8 9-4V9M8 16v7c0 2.2 4 4 9 4s9-1.8 9-4v-7"/></svg>',
-    ndjson: '<svg viewBox="0 0 34 34" aria-hidden="true"><path class="doc" d="M8 3h12l6 6v22H8z"/><path class="fold" d="M20 3v7h6"/><text x="17" y="21" text-anchor="middle">ND</text></svg>'
+    csv: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><rect class="glyph" x="10.5" y="10.5" width="13" height="13" rx="2"/><path class="glyph" d="M14.8 10.5v13M19.2 10.5v13M10.5 15h13M10.5 19h13"/></svg>',
+    xlsx: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="xlsx-back" x="12" y="5" width="17" height="24" rx="4"/><rect class="xlsx-front" x="5" y="8" width="15" height="18" rx="3"/><path class="glyph" d="m9 13 7 8M16 13l-7 8"/></svg>',
+    json: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="M14.5 10c-2.2 0-2.2 2.2-2.2 3.4 0 1.1-.8 1.8-2 1.8 1.2 0 2 .7 2 1.8 0 1.2 0 3.4 2.2 3.4M19.5 10c2.2 0 2.2 2.2 2.2 3.4 0 1.1.8 1.8 2 1.8-1.2 0-2 .7-2 1.8 0 1.2 0 3.4-2.2 3.4"/></svg>',
+    markdown: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="M9.5 12.5v9m0-9 4 5 4-5v9M22 12.5v9m0 0-2.7-2.7M22 21.5l2.7-2.7"/></svg>',
+    png: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><circle class="glyph" cx="12.5" cy="12.5" r="2"/><path class="glyph" d="m9 24 6-6 3.5 3.5 2.5-2.5 4 5z"/></svg>',
+    pdf: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="20.5" text-anchor="middle">PDF</text></svg>',
+    tsv: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="20.5" text-anchor="middle">TSV</text></svg>',
+    html: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><path class="glyph" d="m14.5 11-6 6 6 6M19.5 11l6 6-6 6"/></svg>',
+    sql: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><ellipse class="glyph" cx="17" cy="11" rx="7" ry="3"/><path class="glyph" d="M10 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6M10 17v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+    ndjson: '<svg viewBox="0 0 34 34" aria-hidden="true"><rect class="plate" x="4" y="4" width="26" height="26" rx="7"/><text x="17" y="18.8" text-anchor="middle">NDJ</text></svg>'
   };
   return icons[format] || '';
 }
