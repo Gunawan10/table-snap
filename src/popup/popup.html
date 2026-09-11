@@ -13,10 +13,7 @@
         <div class="brand-logo" aria-hidden="true">
           <svg viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="1"/><path d="M5 11h14M9 7v11M15 7v11M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg>
         </div>
-        <div class="brand-copy">
-          <h1>TableSnap</h1>
-          <p>Export tables in one click</p>
-        </div>
+        <div class="brand-copy"><h1>TableSnap</h1><p>Export tables in one click</p></div>
       </div>
       <label class="enable-toggle" title="TableSnap toggle">
         <input id="enabled" name="enabled" type="checkbox" checked aria-label="TableSnap enabled">
@@ -27,87 +24,19 @@
     <form id="settings-form">
       <div class="tab-content">
         <section class="tab-panel is-active" data-panel="general">
-          <div class="setting-block">
-            <div class="field-copy">
-              <b>Icon visibility</b>
-              <small>Choose when to show the table icon</small>
-            </div>
-            <select name="iconVisibility">
-              <option value="hover">On hover (recommended)</option>
-              <option value="always">Always</option>
-            </select>
-          </div>
-
-          <div class="setting-block">
-            <div class="field-copy">
-              <b>Icon position</b>
-              <small>Where to show the icon relative to the table</small>
-            </div>
-            <select name="iconPosition">
-              <option value="top-right">Top right</option>
-              <option value="top-left">Top left</option>
-            </select>
-          </div>
-
-          <div class="setting-block">
-            <div class="field-copy">
-              <b>Icon size</b>
-              <small>Adjust the size of the table icon</small>
-            </div>
-            <select name="iconSize">
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
-
+          <div class="setting-block"><div class="field-copy"><b>Icon visibility</b><small>Choose when to show the table icon</small></div><select name="iconVisibility"><option value="hover">On hover (recommended)</option><option value="always">Always</option></select></div>
+          <div class="setting-block"><div class="field-copy"><b>Icon position</b><small>Where to show the icon relative to the table</small></div><select name="iconPosition"><option value="top-right">Top right</option><option value="top-left">Top left</option></select></div>
+          <div class="setting-block"><div class="field-copy"><b>Icon size</b><small>Adjust the size of the table icon</small></div><select name="iconSize"><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></div>
           <div class="preview-card">
-            <div class="fake-table" aria-hidden="true">
-              <span></span><span></span><span></span>
-              <span></span><span></span><span></span>
-              <span></span><span></span><span></span>
-              <div class="preview-export-icon">
-                <svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12" rx="1.5"/><path d="M5 10h14M10 6v12M15 6v12"/></svg>
-              </div>
-            </div>
-            <b>Preview</b>
-            <small>This is how the table icon will appear on websites.</small>
+            <div class="fake-table" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><div class="preview-export-icon"><svg viewBox="0 0 24 24"><rect x="5" y="6" width="14" height="12" rx="1.5"/><path d="M5 10h14M10 6v12M15 6v12"/></svg></div></div>
+            <b>Preview</b><small>This is how the table icon will appear on websites.</small>
           </div>
         </section>
 
         <section class="tab-panel" data-panel="export">
-          <div class="setting-block">
-            <div class="field-copy">
-              <b>Default format</b>
-              <small>The format to use when you export a table</small>
-            </div>
-            <select name="defaultFormat">
-              <option value="csv">CSV</option>
-              <option value="xlsx">XLSX (Excel)</option>
-              <option value="json">JSON</option>
-              <option value="markdown">Markdown</option>
-              <option value="png">PNG</option>
-              <option value="pdf">PDF</option>
-              <option value="tsv">TSV</option>
-              <option value="html">HTML</option>
-              <option value="sql">SQL</option>
-              <option value="ndjson">NDJSON</option>
-            </select>
-          </div>
-
-          <div class="format-settings-heading">
-            <div class="field-copy">
-              <b>Format settings</b>
-              <small>Configure options for each export format</small>
-            </div>
-          </div>
-
-          <div class="format-tabs" role="tablist" aria-label="Export format settings">
-            <button type="button" class="format-tab is-active" data-format-tab="csv">CSV</button>
-            <button type="button" class="format-tab" data-format-tab="xlsx">XLSX</button>
-            <button type="button" class="format-tab" data-format-tab="pdf">PDF</button>
-            <button type="button" class="format-tab" data-format-tab="png">PNG</button>
-          </div>
+          <div class="setting-block"><div class="field-copy"><b>Default format</b><small>The format to use when you export a table</small></div><select name="defaultFormat"><option value="csv">CSV</option><option value="xlsx">XLSX (Excel)</option><option value="json">JSON</option><option value="markdown">Markdown</option><option value="png">PNG</option><option value="pdf">PDF</option><option value="tsv">TSV</option><option value="html">HTML</option><option value="sql">SQL</option><option value="ndjson">NDJSON</option></select></div>
+          <div class="format-settings-heading"><div class="field-copy"><b>Format settings</b><small>Configure options for each export format</small></div></div>
+          <div class="format-tabs" role="tablist" aria-label="Export format settings"><button type="button" class="format-tab is-active" data-format-tab="csv">CSV</button><button type="button" class="format-tab" data-format-tab="xlsx">XLSX</button><button type="button" class="format-tab" data-format-tab="pdf">PDF</button><button type="button" class="format-tab" data-format-tab="png">PNG</button></div>
 
           <div class="format-card is-active" data-format-panel="csv">
             <div class="format-card-title"><strong>CSV Settings</strong><small>Customize your CSV export</small></div>
@@ -115,8 +44,12 @@
           </div>
 
           <div class="format-card" data-format-panel="xlsx">
-            <div class="format-card-title"><strong>XLSX (Excel) Settings</strong><small>Excel output is optimized automatically</small></div>
-            <div class="info-box">Auto column width, wrapped multiline text, row sizing, and autofilter are applied automatically.</div>
+            <div class="format-card-title"><strong>XLSX (Excel) Settings</strong><small>Customize your Excel export</small></div>
+            <label class="mini-row"><span><b>Include header row</b><small>Add column headers as first row</small></span><input class="mini-toggle" type="checkbox" name="xlsxIncludeHeader"></label>
+            <label class="mini-row"><span><b>Auto column width</b><small>Automatically fit column widths</small></span><input class="mini-toggle" type="checkbox" name="xlsxAutoColumnWidth"></label>
+            <label class="mini-row"><span><b>Wrap text</b><small>Keep multiline text readable</small></span><input class="mini-toggle" type="checkbox" name="xlsxWrapText"></label>
+            <label class="mini-row"><span><b>Add autofilter</b><small>Add filters to header row</small></span><input class="mini-toggle" type="checkbox" name="xlsxAutoFilter"></label>
+            <div class="info-box">Multiline text and bullet points from the webpage stay inside the same Excel cell.</div>
           </div>
 
           <div class="format-card" data-format-panel="pdf">
@@ -133,56 +66,32 @@
 
         <section class="tab-panel" data-panel="appearance">
           <div class="appearance-group">
-            <div class="field-copy">
-              <b>Theme</b>
-              <small>Choose how the extension looks</small>
-            </div>
-            <div class="theme-options">
-              <label class="theme-card"><input type="radio" name="theme" value="light"><span class="theme-icon">☀</span><b>Light</b></label>
-              <label class="theme-card"><input type="radio" name="theme" value="dark"><span class="theme-icon">☾</span><b>Dark</b></label>
-              <label class="theme-card"><input type="radio" name="theme" value="system"><span class="theme-icon">▣</span><b>System</b></label>
-            </div>
+            <div class="field-copy"><b>Theme</b><small>Choose how the extension looks</small></div>
+            <div class="theme-options"><label class="theme-card"><input type="radio" name="theme" value="light"><span class="theme-icon">☀</span><b>Light</b></label><label class="theme-card"><input type="radio" name="theme" value="dark"><span class="theme-icon">☾</span><b>Dark</b></label><label class="theme-card"><input type="radio" name="theme" value="system"><span class="theme-icon">▣</span><b>System</b></label></div>
           </div>
-
           <div class="appearance-group">
-            <div class="field-copy">
-              <b>Accent color</b>
-              <small>Used for active elements and highlights</small>
-            </div>
+            <div class="field-copy"><b>Accent color</b><small>Used for active elements and highlights</small></div>
             <div class="accent-options" role="radiogroup" aria-label="Accent color">
+              <label class="accent-swatch blue" title="Blue"><input type="radio" name="accentColor" value="blue"><span></span></label>
+              <label class="accent-swatch violet" title="Violet"><input type="radio" name="accentColor" value="violet"><span></span></label>
+              <label class="accent-swatch pink" title="Pink"><input type="radio" name="accentColor" value="pink"><span></span></label>
+              <label class="accent-swatch red" title="Red"><input type="radio" name="accentColor" value="red"><span></span></label>
               <label class="accent-swatch orange" title="Orange"><input type="radio" name="accentColor" value="orange"><span></span></label>
               <label class="accent-swatch emerald" title="Emerald"><input type="radio" name="accentColor" value="emerald"><span></span></label>
               <label class="accent-swatch cyan" title="Cyan"><input type="radio" name="accentColor" value="cyan"><span></span></label>
               <label class="accent-swatch lime" title="Lime"><input type="radio" name="accentColor" value="lime"><span></span></label>
             </div>
           </div>
-
-          <div class="appearance-group reset-group">
-            <div class="field-copy">
-              <b>Reset settings</b>
-              <small>Restore all settings to default values</small>
-            </div>
-            <button id="reset" class="reset-button" type="button">Reset to default</button>
-          </div>
+          <div class="appearance-group reset-group"><div class="field-copy"><b>Reset settings</b><small>Restore all settings to default values</small></div><button id="reset" class="reset-button" type="button">Reset to default</button></div>
         </section>
       </div>
     </form>
 
     <nav class="bottom-nav" aria-label="Settings sections">
-      <button type="button" class="nav-item is-active" data-tab="general">
-        <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.37.34.7.64.96.3.26.68.4 1.06.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1.64Z"/></svg>
-        <span>General</span>
-      </button>
-      <button type="button" class="nav-item" data-tab="export">
-        <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M12 10v7M9 14l3 3 3-3"/></svg>
-        <span>Export</span>
-      </button>
-      <button type="button" class="nav-item" data-tab="appearance">
-        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-2-2-2h-2.2a2 2 0 0 1-1.8-2.8l.6-1.3A2 2 0 0 0 13.8 3H12Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="10" cy="6.8" r="1"/><circle cx="7.7" cy="14" r="1"/></svg>
-        <span>Appearance</span>
-      </button>
+      <button type="button" class="nav-item is-active" data-tab="general"><svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.37.34.7.64.96.3.26.68.4 1.06.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1.64Z"/></svg><span>General</span></button>
+      <button type="button" class="nav-item" data-tab="export"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M14 3v4h4M12 10v7M9 14l3 3 3-3"/></svg><span>Export</span></button>
+      <button type="button" class="nav-item" data-tab="appearance"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-1.1-.9-2-2-2h-2.2a2 2 0 0 1-1.8-2.8l.6-1.3A2 2 0 0 0 13.8 3H12Z"/><circle cx="7.5" cy="10" r="1"/><circle cx="10" cy="6.8" r="1"/><circle cx="7.7" cy="14" r="1"/></svg><span>Appearance</span></button>
     </nav>
-
     <footer><span>v1.1.0</span><span>By Snowman Labs</span></footer>
   </main>
   <script src="popup.js"></script>
