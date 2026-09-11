@@ -21,6 +21,10 @@ let csvDelimiter = ',';
 let imageScale = 2;
 let pdfOrientation = 'auto';
 let pdfPageSize = 'a4';
+let xlsxIncludeHeader = true;
+let xlsxAutoColumnWidth = true;
+let xlsxWrapText = true;
+let xlsxAutoFilter = true;
 
 function cleanText(value) {
   return String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
@@ -126,6 +130,12 @@ function exporterOptions(format) {
     if (pdfOrientation !== 'auto') options.orientation = pdfOrientation;
     options.pageSize = pdfPageSize;
   }
+  if (format === 'xlsx') {
+    options.includeHeader = xlsxIncludeHeader;
+    options.autoColumnWidth = xlsxAutoColumnWidth;
+    options.wrapText = xlsxWrapText;
+    options.autoFilter = xlsxAutoFilter;
+  }
   return options;
 }
 
@@ -167,7 +177,6 @@ async function createPngBlob() {
 async function saveFormat(button, format) {
   try {
     await waitForUiPaint();
-
     const parsed = parseActiveSource();
     if (!parsed?.headers?.length) throw new Error('No table data detected');
 
@@ -200,7 +209,6 @@ async function saveFormat(button, format) {
 async function copyFormat(button, format) {
   const parsed = parseActiveSource();
   if (!parsed?.headers?.length) throw new Error('No table data detected');
-
   let output;
   if (format === 'csv') output = window.__TableSnapCore?.toCsv?.(parsed, csvDelimiter);
   else if (format === 'markdown') output = window.__TableSnapCore?.toMarkdown?.(parsed);
@@ -209,7 +217,6 @@ async function copyFormat(button, format) {
     if (!exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') throw new Error('Format is not copyable');
     output = serializeExport(format, parsed, exporterOptions(format));
   }
-
   if (typeof output !== 'string') throw new Error('Unable to serialize table');
   await copyText(output);
   showActionState(button, 'Copied');
@@ -229,21 +236,14 @@ function tileMarkup(format) {
   const meta = FORMAT_META[format];
   const copyable = !NON_COPYABLE_FORMATS.has(format);
   return `<div class="tablesnap-format-tile" data-tile-format="${format}">
-    <div class="tablesnap-format-visual">
-      <span class="tablesnap-format-icon tone-${meta.tone}">${placeholderIcon()}</span>
-      <span class="tablesnap-format-label">${meta.label}</span>
-    </div>
+    <div class="tablesnap-format-visual"><span class="tablesnap-format-icon tone-${meta.tone}">${placeholderIcon()}</span><span class="tablesnap-format-label">${meta.label}</span></div>
     <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
-    <div class="tablesnap-tile-actions">
-      <button type="button" class="tablesnap-tile-action is-save" data-tile-save="${format}">${actionIcon('save')}<span class="tablesnap-tile-action-label">Save</span></button>
-      ${copyable ? `<button type="button" class="tablesnap-tile-action is-copy" data-tile-copy="${format}">${actionIcon('copy')}<span class="tablesnap-tile-action-label">Copy</span></button>` : ''}
-    </div>
+    <div class="tablesnap-tile-actions"><button type="button" class="tablesnap-tile-action is-save" data-tile-save="${format}">${actionIcon('save')}<span class="tablesnap-tile-action-label">Save</span></button>${copyable ? `<button type="button" class="tablesnap-tile-action is-copy" data-tile-copy="${format}">${actionIcon('copy')}<span class="tablesnap-tile-action-label">Copy</span></button>` : ''}</div>
   </div>`;
 }
 
 function modernizeCard(card) {
   if (card.dataset.tablesnapModernized === 'true') return;
-
   const header = card.querySelector('.tablesnap-card-header, .tablesnap-modern-head');
   if (header) {
     const strong = header.querySelector('strong');
@@ -251,18 +251,15 @@ function modernizeCard(card) {
     if (strong) strong.textContent = 'Export Table';
     if (subtitle && !subtitle.querySelector('svg')) subtitle.textContent = 'Choose a format to export';
   }
-
   const oldActions = card.querySelector('.tablesnap-card-actions, .tablesnap-modern-actions');
   const oldCopy = card.querySelector('.tablesnap-copy-actions, .tablesnap-modern-copy');
   if (!oldActions) return;
   oldActions.classList.add('tablesnap-legacy-actions-hidden');
   oldCopy?.classList.add('tablesnap-legacy-actions-hidden');
-
   const ui = document.createElement('div');
   ui.className = 'tablesnap-compact-export-ui';
   ui.innerHTML = `<div class="tablesnap-format-grid">${FORMATS.map(tileMarkup).join('')}</div>`;
   oldActions.after(ui);
-
   ui.addEventListener('click', (event) => {
     const saveButton = event.target.closest('[data-tile-save]');
     if (saveButton) {
@@ -271,15 +268,12 @@ function modernizeCard(card) {
       saveFormat(saveButton, saveButton.dataset.tileSave);
       return;
     }
-
     const copyButton = event.target.closest('[data-tile-copy]');
     if (!copyButton) return;
     event.preventDefault();
     event.stopPropagation();
-    copyFormat(copyButton, copyButton.dataset.tileCopy)
-      .catch((error) => console.error('[TableSnap] Copy failed:', error));
+    copyFormat(copyButton, copyButton.dataset.tileCopy).catch((error) => console.error('[TableSnap] Copy failed:', error));
   }, true);
-
   card.dataset.tablesnapModernized = 'true';
 }
 
@@ -299,11 +293,24 @@ new MutationObserver(() => {
   document.querySelectorAll('.tablesnap-export-card, .tablesnap-modern-export-card').forEach(modernizeCard);
 }).observe(document.documentElement, { childList: true, subtree: true });
 
-chrome.storage.local.get({ csvDelimiter: ',', imageScale: 2, pdfOrientation: 'auto', pdfPageSize: 'a4' }).then((stored) => {
+chrome.storage.local.get({
+  csvDelimiter: ',',
+  imageScale: 2,
+  pdfOrientation: 'auto',
+  pdfPageSize: 'a4',
+  xlsxIncludeHeader: true,
+  xlsxAutoColumnWidth: true,
+  xlsxWrapText: true,
+  xlsxAutoFilter: true
+}).then((stored) => {
   csvDelimiter = stored.csvDelimiter || ',';
   imageScale = Number(stored.imageScale) || 2;
   pdfOrientation = stored.pdfOrientation || 'auto';
   pdfPageSize = stored.pdfPageSize || 'a4';
+  xlsxIncludeHeader = stored.xlsxIncludeHeader !== false;
+  xlsxAutoColumnWidth = stored.xlsxAutoColumnWidth !== false;
+  xlsxWrapText = stored.xlsxWrapText !== false;
+  xlsxAutoFilter = stored.xlsxAutoFilter !== false;
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -312,4 +319,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.imageScale) imageScale = Number(changes.imageScale.newValue) || 2;
   if (changes.pdfOrientation) pdfOrientation = changes.pdfOrientation.newValue || 'auto';
   if (changes.pdfPageSize) pdfPageSize = changes.pdfPageSize.newValue || 'a4';
+  if (changes.xlsxIncludeHeader) xlsxIncludeHeader = changes.xlsxIncludeHeader.newValue !== false;
+  if (changes.xlsxAutoColumnWidth) xlsxAutoColumnWidth = changes.xlsxAutoColumnWidth.newValue !== false;
+  if (changes.xlsxWrapText) xlsxWrapText = changes.xlsxWrapText.newValue !== false;
+  if (changes.xlsxAutoFilter) xlsxAutoFilter = changes.xlsxAutoFilter.newValue !== false;
 });
