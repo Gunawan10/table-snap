@@ -11,6 +11,12 @@ function resolveFontSize(headers) {
   return 9;
 }
 
+function shouldUseHorizontalPageBreak(headers) {
+  // Normal tables should stay together on one page width and wrap long cell text.
+  // Only genuinely wide tables should split columns across horizontal PDF pages.
+  return headers.length >= 7;
+}
+
 export const pdfExporter = {
   id: 'pdf',
   label: 'PDF',
@@ -19,6 +25,7 @@ export const pdfExporter = {
   copyable: false,
   async createBlob({ headers, rows }, options = {}) {
     const orientation = options.orientation || resolveOrientation(headers);
+    const horizontalPageBreak = shouldUseHorizontalPageBreak(headers);
     const doc = new jsPDF({
       orientation,
       unit: 'pt',
@@ -31,6 +38,7 @@ export const pdfExporter = {
       body: rows,
       startY: 36,
       margin: 36,
+      tableWidth: 'auto',
       theme: 'grid',
       styles: {
         fontSize: resolveFontSize(headers),
@@ -42,8 +50,8 @@ export const pdfExporter = {
         fontStyle: 'bold'
       },
       showHead: 'everyPage',
-      horizontalPageBreak: true,
-      horizontalPageBreakRepeat: 0
+      horizontalPageBreak,
+      horizontalPageBreakRepeat: horizontalPageBreak ? 0 : undefined
     });
 
     return doc.output('blob');
