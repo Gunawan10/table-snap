@@ -23,6 +23,7 @@ const navItems = [...document.querySelectorAll('[data-tab]')];
 const panels = [...document.querySelectorAll('[data-panel]')];
 const formatTabs = [...document.querySelectorAll('[data-format-tab]')];
 const formatPanels = [...document.querySelectorAll('[data-format-panel]')];
+const previewTable = document.querySelector('.fake-table');
 
 function applyTheme(theme) {
   document.body.dataset.theme = theme;
@@ -30,6 +31,13 @@ function applyTheme(theme) {
 
 function applyAccent(accentColor) {
   document.body.dataset.accent = accentColor;
+}
+
+function applyPreviewSettings(settings) {
+  if (!previewTable) return;
+  previewTable.dataset.iconVisibility = settings.iconVisibility || DEFAULTS.iconVisibility;
+  previewTable.dataset.iconPosition = settings.iconPosition || DEFAULTS.iconPosition;
+  previewTable.dataset.iconSize = settings.iconSize || DEFAULTS.iconSize;
 }
 
 function applyEnabledState(enabled) {
@@ -69,6 +77,7 @@ async function load() {
 
   applyTheme(settings.theme);
   applyAccent(settings.accentColor);
+  applyPreviewSettings(settings);
   applyEnabledState(settings.enabled);
 }
 
@@ -98,6 +107,14 @@ form.addEventListener('change', async (event) => {
   await chrome.storage.local.set({ [field.name]: value });
   if (field.name === 'theme') applyTheme(value);
   if (field.name === 'accentColor') applyAccent(value);
+  if (['iconVisibility', 'iconPosition', 'iconSize'].includes(field.name)) {
+    const previewSettings = {
+      iconVisibility: form.elements.namedItem('iconVisibility')?.value,
+      iconPosition: form.elements.namedItem('iconPosition')?.value,
+      iconSize: form.elements.namedItem('iconSize')?.value
+    };
+    applyPreviewSettings(previewSettings);
+  }
 });
 
 resetButton.addEventListener('click', async () => {
