@@ -158,11 +158,36 @@ function waitForUiPaint() {
   });
 }
 
+function isTransparentColor(color) {
+  if (!color || color === 'transparent') return true;
+  const match = color.match(/^rgba?\(([^)]+)\)$/i);
+  if (!match) return false;
+  const parts = match[1].split(',').map((part) => part.trim());
+  return parts.length === 4 && Number(parts[3]) === 0;
+}
+
+function resolvePngBackground(target) {
+  let current = target;
+  while (current instanceof Element) {
+    const color = getComputedStyle(current).backgroundColor;
+    if (!isTransparentColor(color)) return color;
+    current = current.parentElement;
+  }
+
+  const bodyColor = document.body ? getComputedStyle(document.body).backgroundColor : '';
+  if (!isTransparentColor(bodyColor)) return bodyColor;
+
+  const htmlColor = getComputedStyle(document.documentElement).backgroundColor;
+  if (!isTransparentColor(htmlColor)) return htmlColor;
+
+  return '#ffffff';
+}
+
 async function createPngBlob() {
   const target = activeSource?.element;
   if (!target) throw new Error('No table target detected');
   const canvas = await html2canvas(target, {
-    backgroundColor: null,
+    backgroundColor: resolvePngBackground(target),
     scale: imageScale,
     useCORS: true,
     logging: false,
