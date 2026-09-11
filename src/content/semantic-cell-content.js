@@ -149,10 +149,20 @@ function semanticMatrix(source, type) {
   return rows.map((row) => rowCells(row).map(extractSemanticCellText));
 }
 
+function comparableText(value) {
+  return cleanStructuredText(value)
+    .split('\n')
+    .map((line) => line.replace(/^\s*(?:•|[-*]|\d+[.)])\s+/, ''))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function shouldPreferStructuredValue(current, semantic) {
   const structured = cleanStructuredText(semantic);
   if (!structured.includes('\n')) return false;
-  return cleanText(current) === cleanText(structured);
+  return comparableText(current) === comparableText(structured);
 }
 
 function applyFallback(parsed, source, type) {
