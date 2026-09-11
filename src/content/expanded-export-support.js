@@ -19,6 +19,8 @@ const FORMAT_META = {
 let activeSource = null;
 let csvDelimiter = ',';
 let imageScale = 2;
+let pdfOrientation = 'auto';
+let pdfPageSize = 'a4';
 
 function cleanText(value) {
   return String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
@@ -118,8 +120,13 @@ async function copyText(text) {
   }
 }
 
-function exporterOptions() {
-  return { tableName: 'table_data' };
+function exporterOptions(format) {
+  const options = { tableName: 'table_data' };
+  if (format === 'pdf') {
+    if (pdfOrientation !== 'auto') options.orientation = pdfOrientation;
+    options.pageSize = pdfPageSize;
+  }
+  return options;
 }
 
 function showActionState(button, text) {
@@ -159,7 +166,6 @@ async function createPngBlob() {
 
 async function saveFormat(button, format) {
   try {
-    // Let loading state render before parsing or heavy exporters (especially html2canvas for PNG).
     await waitForUiPaint();
 
     const parsed = parseActiveSource();
@@ -177,9 +183,10 @@ async function saveFormat(button, format) {
     } else {
       const exporter = getExporter(format);
       if (!exporter) throw new Error(`Unsupported format: ${format}`);
+      const options = exporterOptions(format);
       const blob = typeof exporter.createBlob === 'function'
-        ? await exporter.createBlob(parsed, exporterOptions())
-        : new Blob([serializeExport(format, parsed, exporterOptions())], { type: exporter.mimeType });
+        ? await exporter.createBlob(parsed, options)
+        : new Blob([serializeExport(format, parsed, options)], { type: exporter.mimeType });
       downloadBlob(blob, createFilename(exporter.extension));
     }
 
@@ -200,7 +207,7 @@ async function copyFormat(button, format) {
   else {
     const exporter = getExporter(format);
     if (!exporter || exporter.copyable === false || typeof exporter.serialize !== 'function') throw new Error('Format is not copyable');
-    output = serializeExport(format, parsed, exporterOptions());
+    output = serializeExport(format, parsed, exporterOptions(format));
   }
 
   if (typeof output !== 'string') throw new Error('Unable to serialize table');
@@ -214,8 +221,8 @@ function actionIcon(type) {
   return '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="6" width="9" height="10" rx="1.5"/><path d="M13 6V4H4v9h3"/></svg>';
 }
 
-function placeholderIcon(format) {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>`;
+function placeholderIcon() {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>';
 }
 
 function tileMarkup(format) {
@@ -223,7 +230,7 @@ function tileMarkup(format) {
   const copyable = !NON_COPYABLE_FORMATS.has(format);
   return `<div class="tablesnap-format-tile" data-tile-format="${format}">
     <div class="tablesnap-format-visual">
-      <span class="tablesnap-format-icon tone-${meta.tone}">${placeholderIcon(format)}</span>
+      <span class="tablesnap-format-icon tone-${meta.tone}">${placeholderIcon()}</span>
       <span class="tablesnap-format-label">${meta.label}</span>
     </div>
     <div class="tablesnap-tile-overlay" aria-hidden="true"></div>
@@ -292,13 +299,17 @@ new MutationObserver(() => {
   document.querySelectorAll('.tablesnap-export-card, .tablesnap-modern-export-card').forEach(modernizeCard);
 }).observe(document.documentElement, { childList: true, subtree: true });
 
-chrome.storage.local.get({ csvDelimiter: ',', imageScale: 2 }).then((stored) => {
+chrome.storage.local.get({ csvDelimiter: ',', imageScale: 2, pdfOrientation: 'auto', pdfPageSize: 'a4' }).then((stored) => {
   csvDelimiter = stored.csvDelimiter || ',';
   imageScale = Number(stored.imageScale) || 2;
+  pdfOrientation = stored.pdfOrientation || 'auto';
+  pdfPageSize = stored.pdfPageSize || 'a4';
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.csvDelimiter) csvDelimiter = changes.csvDelimiter.newValue || ',';
   if (changes.imageScale) imageScale = Number(changes.imageScale.newValue) || 2;
+  if (changes.pdfOrientation) pdfOrientation = changes.pdfOrientation.newValue || 'auto';
+  if (changes.pdfPageSize) pdfPageSize = changes.pdfPageSize.newValue || 'a4';
 });
