@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TableSnap",
   "version": "1.1.0",
-  "description": "Capture and export web tables to CSV, XLSX, JSON, Markdown, PNG, PDF, and more.",
+  "description": "Fastest way to capture and export tables from the web. A local-first, privacy-friendly Chrome extension.",
   "permissions": ["storage"],
   "icons": {
     "16": "icons/icon16.png",
