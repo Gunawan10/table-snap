@@ -6,6 +6,8 @@ const DEFAULTS = {
   defaultFormat: 'csv',
   csvDelimiter: ',',
   imageScale: 2,
+  pdfOrientation: 'auto',
+  pdfPageSize: 'a4',
   theme: 'system',
   accentColor: 'orange'
 };
