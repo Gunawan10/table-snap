@@ -183,6 +183,18 @@ function resolvePngBackground(target) {
   return '#ffffff';
 }
 
+function shouldIgnorePngCloneElement(element) {
+  if (!(element instanceof Element)) return false;
+  const tag = element.tagName;
+  if (['SCRIPT', 'NOSCRIPT', 'IFRAME', 'OBJECT', 'EMBED'].includes(tag)) return true;
+  if (tag === 'LINK') {
+    const rel = (element.getAttribute('rel') || '').toLowerCase();
+    const as = (element.getAttribute('as') || '').toLowerCase();
+    if (rel.includes('modulepreload') || (rel.includes('preload') && as === 'script')) return true;
+  }
+  return element.matches('.tablesnap-export-icon, .tablesnap-export-card, .tablesnap-modern-export-card');
+}
+
 async function createPngBlob() {
   const target = activeSource?.element;
   if (!target) throw new Error('No table target detected');
@@ -192,7 +204,11 @@ async function createPngBlob() {
     useCORS: true,
     logging: false,
     windowWidth: Math.max(document.documentElement.scrollWidth, target.scrollWidth || 0),
-    onclone: (doc) => doc.querySelectorAll('.tablesnap-export-icon, .tablesnap-export-card, .tablesnap-modern-export-card').forEach((node) => node.remove())
+    ignoreElements: shouldIgnorePngCloneElement,
+    onclone: (doc) => {
+      doc.querySelectorAll('script, noscript, iframe, object, embed, link[rel="modulepreload"], link[rel="preload"][as="script"], .tablesnap-export-icon, .tablesnap-export-card, .tablesnap-modern-export-card')
+        .forEach((node) => node.remove());
+    }
   });
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Failed to create PNG')), 'image/png');
