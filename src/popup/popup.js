@@ -8,6 +8,10 @@ const DEFAULTS = {
   imageScale: 2,
   pdfOrientation: 'auto',
   pdfPageSize: 'a4',
+  xlsxIncludeHeader: true,
+  xlsxAutoColumnWidth: true,
+  xlsxWrapText: true,
+  xlsxAutoFilter: true,
   theme: 'system',
   accentColor: 'orange'
 };
@@ -56,6 +60,10 @@ async function load() {
       field.value = String(value);
       return;
     }
+    if (field.type === 'checkbox') {
+      field.checked = Boolean(value);
+      return;
+    }
     field.value = String(value);
   });
 
@@ -81,7 +89,12 @@ formatTabs.forEach((item) => {
 form.addEventListener('change', async (event) => {
   const field = event.target;
   if (!field.name) return;
-  const value = field.name === 'imageScale' ? Number(field.value) : field.value;
+
+  let value;
+  if (field.type === 'checkbox') value = field.checked;
+  else if (field.name === 'imageScale') value = Number(field.value);
+  else value = field.value;
+
   await chrome.storage.local.set({ [field.name]: value });
   if (field.name === 'theme') applyTheme(value);
   if (field.name === 'accentColor') applyAccent(value);
