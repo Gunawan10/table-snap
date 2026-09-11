@@ -6,6 +6,16 @@ function cleanText(value) {
     .trim();
 }
 
+function cleanStructuredText(value) {
+  return String(value ?? '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function isDecorative(element) {
   if (!(element instanceof Element)) return false;
   if (element.getAttribute('aria-hidden') === 'true') return true;
@@ -22,6 +32,24 @@ function meaningfulLabel(element) {
       || element.getAttribute('alt')
       || ''
   );
+}
+
+function preserveStructure(clone) {
+  clone.querySelectorAll('br').forEach((node) => node.replaceWith(document.createTextNode('\n')));
+
+  clone.querySelectorAll('li').forEach((item) => {
+    const parent = item.parentElement;
+    const ordered = parent?.tagName === 'OL';
+    const index = ordered ? [...parent.children].filter((child) => child.tagName === 'LI').indexOf(item) + 1 : 0;
+    const prefix = ordered ? `${index}. ` : '• ';
+    item.insertBefore(document.createTextNode(prefix), item.firstChild);
+    item.append(document.createTextNode('\n'));
+  });
+
+  clone.querySelectorAll('p, div').forEach((block) => {
+    if (!block.nextSibling) return;
+    block.append(document.createTextNode('\n'));
+  });
 }
 
 function visibleMeaningfulText(cell) {
@@ -47,7 +75,8 @@ function visibleMeaningfulText(cell) {
     else button.remove();
   });
 
-  return cleanText(clone.textContent || '');
+  preserveStructure(clone);
+  return cleanStructuredText(clone.textContent || '');
 }
 
 function semanticFallback(cell) {
@@ -120,6 +149,12 @@ function semanticMatrix(source, type) {
   return rows.map((row) => rowCells(row).map(extractSemanticCellText));
 }
 
+function shouldPreferStructuredValue(current, semantic) {
+  const structured = cleanStructuredText(semantic);
+  if (!structured.includes('\n')) return false;
+  return cleanText(current) === cleanText(structured);
+}
+
 function applyFallback(parsed, source, type) {
   if (!parsed?.headers?.length || !source) return parsed;
 
@@ -141,9 +176,12 @@ function applyFallback(parsed, source, type) {
   normalized.rows.forEach((row, rowIndex) => {
     const semanticRow = matrix[dataStart + rowIndex] || [];
     row.forEach((value, columnIndex) => {
-      if (cleanText(value)) return;
-      const fallback = cleanText(semanticRow[columnIndex] || '');
-      if (fallback) row[columnIndex] = fallback;
+      const semantic = cleanStructuredText(semanticRow[columnIndex] || '');
+      if (!semantic) return;
+
+      if (!cleanText(value) || shouldPreferStructuredValue(value, semantic)) {
+        row[columnIndex] = semantic;
+      }
     });
   });
 
