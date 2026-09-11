@@ -20,17 +20,41 @@ function estimateRowHeight(row) {
   return Math.min(90, Math.max(20, 18 + ((lines - 1) * 13)));
 }
 
-function applyWorksheetLayout(worksheet, headers, rows) {
-  worksheet['!cols'] = headers.map((header, columnIndex) => ({
-    wch: measureColumnWidth(header, rows.map((row) => row[columnIndex]))
-  }));
+function applyWrapText(worksheet, range) {
+  for (let row = range.s.r; row <= range.e.r; row += 1) {
+    for (let column = range.s.c; column <= range.e.c; column += 1) {
+      const address = XLSX.utils.encode_cell({ r: row, c: column });
+      const cell = worksheet[address];
+      if (!cell) continue;
+      cell.s = {
+        ...(cell.s || {}),
+        alignment: {
+          ...(cell.s?.alignment || {}),
+          wrapText: true,
+          vertical: 'top'
+        }
+      };
+    }
+  }
+}
 
-  worksheet['!rows'] = [
-    { hpt: 22 },
-    ...rows.map((row) => ({ hpt: estimateRowHeight(row) }))
-  ];
+function applyWorksheetLayout(worksheet, headers, rows, options, headerOffset) {
+  if (options.autoColumnWidth !== false) {
+    worksheet['!cols'] = headers.map((header, columnIndex) => ({
+      wch: measureColumnWidth(header, rows.map((row) => row[columnIndex]))
+    }));
+  }
 
-  if (headers.length) {
+  if (options.wrapText !== false) {
+    worksheet['!rows'] = [
+      ...(headerOffset ? [{ hpt: 22 }] : []),
+      ...rows.map((row) => ({ hpt: estimateRowHeight(row) }))
+    ];
+
+    if (worksheet['!ref']) applyWrapText(worksheet, XLSX.utils.decode_range(worksheet['!ref']));
+  }
+
+  if (options.autoFilter !== false && headerOffset && headers.length) {
     worksheet['!autofilter'] = {
       ref: XLSX.utils.encode_range({
         s: { r: 0, c: 0 },
@@ -46,9 +70,12 @@ export const xlsxExporter = {
   extension: 'xlsx',
   mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   copyable: false,
-  async createBlob({ headers, rows }) {
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    applyWorksheetLayout(worksheet, headers, rows);
+  async createBlob({ headers, rows }, options = {}) {
+    const includeHeader = options.includeHeader !== false;
+    const data = includeHeader ? [headers, ...rows] : rows;
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+
+    applyWorksheetLayout(worksheet, headers, rows, options, includeHeader ? 1 : 0);
 
     const workbook = XLSX.utils.book_new();
     workbook.Props = {
@@ -57,7 +84,11 @@ export const xlsxExporter = {
     };
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Table');
 
-    const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const output = XLSX.write(workbook, {
+      bookType: 'xlsx',
+      type: 'array',
+      cellStyles: true
+    });
     return new Blob([output], { type: this.mimeType });
   }
 };
