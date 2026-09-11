@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.0
+
+Modern table support and expanded export update.
+
+### Added
+
+- Support for modern table-like layouts, including ARIA tables/grids, div-based tables, and CSS Grid layouts.
+- New export formats: XLSX, JSON, PDF, TSV, HTML, SQL, and NDJSON.
+- Direct copy support for text-based formats.
+- Format-specific settings for CSV, XLSX, PDF, and PNG.
+- XLSX options for header rows, auto column width, wrap text, and autofilter.
+- PDF orientation and page-size options.
+- Expanded theme and accent color settings.
+- Live icon preview that follows icon visibility, position, and size settings.
+
+### Improved
+
+- Preserve meaningful multiline content, ordered lists, and bullet points across normalized exports.
+- Improve XLSX sizing and readability for multiline content.
+- Improve PDF column sizing, wrapping, and wide-table handling.
+- Improve PNG background detection for transparent table containers.
+- Improve PNG capture reliability on pages with restrictive Content Security Policy rules.
+- Refresh popup settings UI and export workflow.
+- Update product positioning, metadata, and documentation for the broader capture/export scope.
+
 ## v1.0.1
 
 Stability and export reliability update.
