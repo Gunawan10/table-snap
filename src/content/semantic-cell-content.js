@@ -165,6 +165,53 @@ function shouldPreferStructuredValue(current, semantic) {
   return comparableText(current) === comparableText(structured);
 }
 
+function alignSemanticRow(parsedRow, semanticRow) {
+  if (semanticRow.length === parsedRow.length) return semanticRow;
+  if (!semanticRow.length || !parsedRow.length) return Array(parsedRow.length).fill('');
+
+  const aligned = Array(parsedRow.length).fill('');
+  const anchors = [];
+  let semanticCursor = 0;
+
+  parsedRow.forEach((value, parsedIndex) => {
+    const expected = comparableText(value);
+    if (!expected) return;
+
+    for (let semanticIndex = semanticCursor; semanticIndex < semanticRow.length; semanticIndex += 1) {
+      if (comparableText(semanticRow[semanticIndex]) !== expected) continue;
+      anchors.push({ parsedIndex, semanticIndex });
+      aligned[parsedIndex] = semanticRow[semanticIndex];
+      semanticCursor = semanticIndex + 1;
+      return;
+    }
+  });
+
+  if (!anchors.length) return aligned;
+
+  const boundaries = [
+    { parsedIndex: -1, semanticIndex: -1 },
+    ...anchors,
+    { parsedIndex: parsedRow.length, semanticIndex: semanticRow.length }
+  ];
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const left = boundaries[index];
+    const right = boundaries[index + 1];
+    const parsedGap = right.parsedIndex - left.parsedIndex - 1;
+    const semanticGap = right.semanticIndex - left.semanticIndex - 1;
+
+    if (parsedGap <= 0 || parsedGap !== semanticGap) continue;
+
+    for (let offset = 1; offset <= parsedGap; offset += 1) {
+      const parsedIndex = left.parsedIndex + offset;
+      const semanticIndex = left.semanticIndex + offset;
+      if (!aligned[parsedIndex]) aligned[parsedIndex] = semanticRow[semanticIndex] || '';
+    }
+  }
+
+  return aligned;
+}
+
 function applyFallback(parsed, source, type) {
   if (!parsed?.headers?.length || !source) return parsed;
 
@@ -184,7 +231,9 @@ function applyFallback(parsed, source, type) {
   const dataStart = headerIndex >= 0 ? headerIndex + 1 : Math.max(0, matrix.length - normalized.rows.length);
 
   normalized.rows.forEach((row, rowIndex) => {
-    const semanticRow = matrix[dataStart + rowIndex] || [];
+    const rawSemanticRow = matrix[dataStart + rowIndex] || [];
+    const semanticRow = alignSemanticRow(row, rawSemanticRow);
+
     row.forEach((value, columnIndex) => {
       const semantic = cleanStructuredText(semanticRow[columnIndex] || '');
       if (!semantic) return;
