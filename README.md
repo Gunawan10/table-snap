@@ -80,14 +80,14 @@ Capture the table visually using `html2canvas`.
 
 ### PDF
 
-Export tables to paginated PDF using `jsPDF` and `jspdf-autotable`.
+Export tables to paginated PDF using TableSnap's self-contained in-browser PDF generator.
 
 Available settings include:
 
 - Orientation: Auto / Portrait / Landscape
 - Page size: A4 / Letter
 
-Normal tables stay together when possible, while genuinely wide tables can split across horizontal PDF pages.
+The PDF exporter supports wrapped cell content, repeated headers, multi-page output, alternating row backgrounds, and horizontal splitting for genuinely wide tables. PDF generation runs locally without loading remote code or external PDF libraries at runtime.
 
 ### TSV
 
@@ -186,8 +186,7 @@ Parsing and export generation happen inside the browser.
 - `MutationObserver`
 - `html2canvas`
 - `xlsx`
-- `jsPDF`
-- `jspdf-autotable`
+- Self-contained in-browser PDF generation
 - esbuild
 - Sharp for extension icon assets during build
 
@@ -216,6 +215,8 @@ Build output is generated in:
 ```text
 dist/
 ```
+
+The build also performs an MV3 remote-code check and fails if generated extension files contain unsupported dynamic or remotely hosted JavaScript patterns.
 
 ## Load Extension Locally
 
