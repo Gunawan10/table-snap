@@ -23,8 +23,14 @@ function cleanText(value) {
     .trim();
 }
 
+function extractCellText(cell) {
+  const semantic = window.__TableSnapSemantic?.extractSemanticCellText?.(cell);
+  if (semantic) return cleanText(semantic);
+  return cleanText(cell?.innerText || cell?.textContent || '');
+}
+
 function rowHasContent(row) {
-  return visibleCells(row).some((cell) => cleanText(cell.innerText || cell.textContent || '') !== '');
+  return visibleCells(row).some((cell) => extractCellText(cell) !== '');
 }
 
 function getDataRows(table) {
@@ -54,12 +60,15 @@ function buildSpanCoverage(rows) {
 
       const rowspan = Math.max(1, Number.parseInt(cell.getAttribute('rowspan') || '1', 10));
       const colspan = Math.max(1, Number.parseInt(cell.getAttribute('colspan') || '1', 10));
+      const text = extractCellText(cell);
 
       for (let r = rowIndex; r < rowIndex + rowspan; r += 1) {
         grid[r] ||= [];
         for (let c = columnIndex; c < columnIndex + colspan; c += 1) {
           grid[r][c] = {
             originColumn: columnIndex,
+            originRow: rowIndex,
+            text,
             colspanContinuation: c > columnIndex
           };
         }
@@ -72,34 +81,106 @@ function buildSpanCoverage(rows) {
   return grid;
 }
 
+function normalizedComparable(value) {
+  return cleanText(value).toLowerCase();
+}
+
+function coverageRowScore(parsedRow, coverageRow) {
+  let matches = 0;
+  let compared = 0;
+
+  coverageRow.forEach((slot, columnIndex) => {
+    if (!slot || slot.colspanContinuation || slot.originRow === undefined) return;
+    const expected = normalizedComparable(slot.text);
+    if (!expected) return;
+
+    const actual = normalizedComparable(parsedRow[columnIndex]);
+    if (!actual) return;
+
+    compared += 1;
+    if (actual === expected) matches += 1;
+  });
+
+  // Prefer rows that agree on multiple independent cells. A single match can be
+  // accidental on repeated values such as dates, tiers, or participant counts.
+  return { matches, compared };
+}
+
+function matchCoverageRows(parsedRows, coverage) {
+  const available = new Set(coverage.map((_, index) => index));
+  const matches = new Map();
+
+  parsedRows.forEach((parsedRow, parsedIndex) => {
+    let bestIndex = -1;
+    let bestMatches = -1;
+    let bestCompared = -1;
+
+    available.forEach((coverageIndex) => {
+      const score = coverageRowScore(parsedRow, coverage[coverageIndex] || []);
+      if (
+        score.matches > bestMatches
+        || (score.matches === bestMatches && score.compared > bestCompared)
+        || (score.matches === bestMatches && score.compared === bestCompared
+          && Math.abs(coverageIndex - parsedIndex) < Math.abs(bestIndex - parsedIndex))
+      ) {
+        bestIndex = coverageIndex;
+        bestMatches = score.matches;
+        bestCompared = score.compared;
+      }
+    });
+
+    // Two matches are enough for a stable row identity in ordinary tables. If
+    // row counts still line up, allow the same-position row as a safe fallback.
+    const samePosition = coverage[parsedIndex];
+    if (bestIndex >= 0 && bestMatches >= 2) {
+      matches.set(parsedIndex, bestIndex);
+      available.delete(bestIndex);
+    } else if (samePosition && available.has(parsedIndex)) {
+      matches.set(parsedIndex, parsedIndex);
+      available.delete(parsedIndex);
+    }
+  });
+
+  return matches;
+}
+
 function clearDuplicatedColspanValues(parsed, source) {
   if (!parsed?.headers?.length || !Array.isArray(parsed.rows)) return parsed;
 
   const core = window.__TableSnapCore;
   const dataTable = core?.resolveDataTable?.(source) || source;
   const dataRows = getDataRows(dataTable);
-  if (!dataRows.length || dataRows.length !== parsed.rows.length) return parsed;
+  if (!dataRows.length) return parsed;
 
   const coverage = buildSpanCoverage(dataRows);
-  const coverageWidth = coverage.reduce((max, row) => Math.max(max, row.length), 0);
+  const rowMatches = matchCoverageRows(parsed.rows, coverage);
+  let changed = false;
 
-  // Decorative-column compaction can change column indexes. In that case leave the
-  // parsed result untouched rather than risking a false correction.
-  if (coverageWidth !== parsed.headers.length) return parsed;
+  const rows = parsed.rows.map((row, parsedRowIndex) => {
+    const coverageIndex = rowMatches.get(parsedRowIndex);
+    if (coverageIndex === undefined) return row;
 
-  const rows = parsed.rows.map((row, rowIndex) => {
+    const coverageRow = coverage[coverageIndex] || [];
     const next = [...row];
-    const coverageRow = coverage[rowIndex] || [];
 
     coverageRow.forEach((slot, columnIndex) => {
-      if (!slot?.colspanContinuation) return;
-      next[columnIndex] = '';
+      if (!slot?.colspanContinuation || columnIndex >= next.length) return;
+
+      // Only blank a continuation when the parser duplicated the spanning
+      // cell's value into that logical column. This avoids touching unrelated
+      // compacted/decorative columns.
+      const current = normalizedComparable(next[columnIndex]);
+      const origin = normalizedComparable(slot.text);
+      if (current && origin && current === origin) {
+        next[columnIndex] = '';
+        changed = true;
+      }
     });
 
     return next;
   });
 
-  return { ...parsed, rows };
+  return changed ? { ...parsed, rows } : parsed;
 }
 
 function patchNativeParser() {
