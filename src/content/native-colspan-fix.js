@@ -48,6 +48,23 @@ function getDataRows(table) {
   return rows;
 }
 
+function getHeaderRows(table) {
+  if (!(table instanceof HTMLTableElement)) return [];
+  if (table.tHead) {
+    const rows = [...table.tHead.rows].filter((row) => !isHiddenElement(row) && visibleCells(row).length);
+    if (rows.length) return rows;
+  }
+
+  const rows = [];
+  for (const row of [...table.rows]) {
+    if (isHiddenElement(row)) continue;
+    const cells = visibleCells(row);
+    if (!cells.length || !cells.some((cell) => cell.tagName === 'TH')) break;
+    rows.push(row);
+  }
+  return rows;
+}
+
 function buildSpanCoverage(rows) {
   const grid = [];
 
@@ -101,8 +118,6 @@ function coverageRowScore(parsedRow, coverageRow) {
     if (actual === expected) matches += 1;
   });
 
-  // Prefer rows that agree on multiple independent cells. A single match can be
-  // accidental on repeated values such as dates, tiers, or participant counts.
   return { matches, compared };
 }
 
@@ -129,8 +144,6 @@ function matchCoverageRows(parsedRows, coverage) {
       }
     });
 
-    // Two matches are enough for a stable row identity in ordinary tables. If
-    // row counts still line up, allow the same-position row as a safe fallback.
     const samePosition = coverage[parsedIndex];
     if (bestIndex >= 0 && bestMatches >= 2) {
       matches.set(parsedIndex, bestIndex);
@@ -144,6 +157,43 @@ function matchCoverageRows(parsedRows, coverage) {
   return matches;
 }
 
+function resolveHeaderColumnStarts(source, width) {
+  const core = window.__TableSnapCore;
+  const dataTable = core?.resolveDataTable?.(source) || source;
+  const headerTable = core?.resolveHeaderTable?.(source, dataTable) || source;
+  const candidates = getHeaderRows(headerTable)
+    .map((row) => visibleCells(row))
+    .filter((cells) => cells.length === width);
+
+  if (!candidates.length) return [];
+  const cells = candidates[candidates.length - 1];
+  return cells.map((cell) => cell.getBoundingClientRect().left);
+}
+
+function visualContinuationColumns(row, headerStarts) {
+  if (!headerStarts.length) return new Set();
+  const continuations = new Set();
+  const tolerance = 2;
+
+  visibleCells(row).forEach((cell) => {
+    const rect = cell.getBoundingClientRect();
+    let origin = -1;
+
+    for (let index = 0; index < headerStarts.length; index += 1) {
+      if (headerStarts[index] <= rect.left + tolerance) origin = index;
+      else break;
+    }
+
+    if (origin < 0) return;
+    for (let index = origin + 1; index < headerStarts.length; index += 1) {
+      if (headerStarts[index] < rect.right - tolerance) continuations.add(index);
+      else break;
+    }
+  });
+
+  return continuations;
+}
+
 function clearDuplicatedColspanValues(parsed, source) {
   if (!parsed?.headers?.length || !Array.isArray(parsed.rows)) return parsed;
 
@@ -154,6 +204,7 @@ function clearDuplicatedColspanValues(parsed, source) {
 
   const coverage = buildSpanCoverage(dataRows);
   const rowMatches = matchCoverageRows(parsed.rows, coverage);
+  const headerStarts = resolveHeaderColumnStarts(source, parsed.headers.length);
   let changed = false;
 
   const rows = parsed.rows.map((row, parsedRowIndex) => {
@@ -161,17 +212,17 @@ function clearDuplicatedColspanValues(parsed, source) {
     if (coverageIndex === undefined) return row;
 
     const coverageRow = coverage[coverageIndex] || [];
+    const sourceRow = dataRows[coverageIndex];
     const next = [...row];
+    const continuationColumns = visualContinuationColumns(sourceRow, headerStarts);
 
     coverageRow.forEach((slot, columnIndex) => {
-      if (!slot?.colspanContinuation || columnIndex >= next.length) return;
+      if (slot?.colspanContinuation) continuationColumns.add(columnIndex);
+    });
 
-      // Only blank a continuation when the parser duplicated the spanning
-      // cell's value into that logical column. This avoids touching unrelated
-      // compacted/decorative columns.
-      const current = normalizedComparable(next[columnIndex]);
-      const origin = normalizedComparable(slot.text);
-      if (current && origin && current === origin) {
+    continuationColumns.forEach((columnIndex) => {
+      if (columnIndex >= next.length) return;
+      if (next[columnIndex] !== '') {
         next[columnIndex] = '';
         changed = true;
       }
