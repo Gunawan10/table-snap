@@ -1,5 +1,6 @@
 import { build } from 'esbuild';
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
 import sharp from 'sharp';
 
 await rm('dist', { recursive: true, force: true });
@@ -74,4 +75,40 @@ await cp('src/popup/popup.html', 'dist/popup/popup.html');
 await cp('src/popup/popup.css', 'dist/popup/popup.css');
 await cp('src/popup/popup.js', 'dist/popup/popup.js');
 
+const REMOTE_CODE_CHECKS = [
+  { label: 'dynamic import()', pattern: /\bimport\s*\(/ },
+  { label: 'remote script tag', pattern: /<script\b[^>]*\bsrc\s*=\s*["']https?:\/\//i },
+  { label: 'remote importScripts()', pattern: /\bimportScripts\s*\(\s*["']https?:\/\//i },
+  { label: 'remote Worker()', pattern: /\b(?:new\s+)?(?:Shared)?Worker\s*\(\s*["']https?:\/\//i },
+  { label: 'remote JavaScript URL', pattern: /["']https?:\/\/[^"']+\.m?js(?:[?#][^"']*)?["']/i }
+];
+
+async function listTextFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return listTextFiles(fullPath);
+    return /\.(?:js|mjs|html)$/i.test(entry.name) ? [fullPath] : [];
+  }));
+  return nested.flat();
+}
+
+async function assertNoRemoteCode() {
+  const files = await listTextFiles('dist');
+  const violations = [];
+
+  for (const file of files) {
+    const source = await readFile(file, 'utf8');
+    for (const check of REMOTE_CODE_CHECKS) {
+      if (check.pattern.test(source)) violations.push(`${file}: ${check.label}`);
+    }
+  }
+
+  if (violations.length) {
+    throw new Error(`MV3 remote-code check failed:\n${violations.join('\n')}`);
+  }
+}
+
+await assertNoRemoteCode();
 console.log('Built extension in dist/');
+console.log('MV3 remote-code check passed.');
