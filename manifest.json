@@ -53,7 +53,8 @@
         "content/table-editor-foundation.css",
         "content/table-editor-format-settings.css",
         "content/table-editor-accordion.css",
-        "content/table-editor-spacing.css"
+        "content/table-editor-spacing.css",
+        "content/table-editor-typography.css"
       ],
       "run_at": "document_idle"
     }
