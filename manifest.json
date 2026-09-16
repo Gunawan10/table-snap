@@ -38,7 +38,8 @@
         "content/export-action-state.js",
         "content/card-position-fix.js",
         "content/export-error-state.js",
-        "content/table-editor-foundation.js"
+        "content/table-editor-foundation.js",
+        "content/table-editor-content-file-settings.js"
       ],
       "css": [
         "content/content.css",
