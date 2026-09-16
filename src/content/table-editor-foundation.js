@@ -99,7 +99,6 @@
                   <strong>Table Preview</strong>
                   <span class="tablesnap-editor-table-count" data-table-count></span>
                 </div>
-                <span data-selection-count></span>
               </div>
               <label class="tablesnap-editor-search">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg>
@@ -134,11 +133,12 @@
         </div>
 
         <footer class="tablesnap-editor-footer">
-          <label class="tablesnap-editor-format">
-            <span>Format</span>
-            <select disabled aria-label="Export format"><option>CSV</option></select>
-          </label>
+          <div class="tablesnap-editor-selection-summary" data-selection-count></div>
           <div class="tablesnap-editor-footer-actions">
+            <label class="tablesnap-editor-format">
+              <span>Format</span>
+              <select disabled aria-label="Export format"><option>CSV</option></select>
+            </label>
             <button type="button" class="tablesnap-editor-secondary" disabled>Copy</button>
             <button type="button" class="tablesnap-editor-primary" disabled>Export</button>
           </div>
@@ -332,7 +332,8 @@
     if (count) count.textContent = `${rowText} × ${columnText}`;
     if (selection) {
       const selected = selectedEffectiveCount(allRows);
-      selection.textContent = `${selected} row${selected === 1 ? '' : 's'} selected`;
+      selection.textContent = `${selected} of ${allRows.length} row${allRows.length === 1 ? '' : 's'} selected`;
+      selection.dataset.active = String(selected > 0);
     }
   }
 
