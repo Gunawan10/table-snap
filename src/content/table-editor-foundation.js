@@ -334,9 +334,25 @@
     preview.append(scroller);
   }
 
+  function prepareSourceCardHost(card) {
+    card.replaceChildren();
+    card.classList.add('tablesnap-editor-source-host');
+    card.style.setProperty('display', 'block', 'important');
+    card.style.setProperty('width', '0', 'important');
+    card.style.setProperty('height', '0', 'important');
+    card.style.setProperty('min-width', '0', 'important');
+    card.style.setProperty('min-height', '0', 'important');
+    card.style.setProperty('max-height', 'none', 'important');
+    card.style.setProperty('padding', '0', 'important');
+    card.style.setProperty('border', '0', 'important');
+    card.style.setProperty('border-radius', '0', 'important');
+    card.style.setProperty('background', 'transparent', 'important');
+    card.style.setProperty('box-shadow', 'none', 'important');
+    card.style.setProperty('overflow', 'visible', 'important');
+  }
+
   function openEditor(card) {
     sourceCard = card;
-    sourceCard.style.setProperty('display', 'none', 'important');
     sourceIcon = document.querySelector('.tablesnap-export-icon[data-card-open="true"]') || sourceIcon;
 
     if (!sourceTarget && sourceIcon) {
@@ -351,8 +367,9 @@
     selectedRows = new Set(snapshot.rows.map((_, index) => index));
     searchQuery = '';
 
+    prepareSourceCardHost(sourceCard);
     editor = createEditor();
-    document.documentElement.append(editor);
+    sourceCard.append(editor);
     document.documentElement.classList.add('tablesnap-editor-open');
     renderPreview();
     requestAnimationFrame(() => editor?.classList.add('is-open'));
