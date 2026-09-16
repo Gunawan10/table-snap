@@ -11,6 +11,9 @@
   let snapshot = { headers: [], rows: [] };
   let selectedRows = new Set();
   let searchQuery = '';
+  let columns = [];
+  let editingColumnId = null;
+  let draggingColumnId = null;
 
   function closeEditorOnly() {
     editor?.remove();
@@ -22,12 +25,14 @@
     snapshot = { headers: [], rows: [] };
     selectedRows = new Set();
     searchQuery = '';
+    columns = [];
+    editingColumnId = null;
+    draggingColumnId = null;
     document.documentElement.classList.remove('tablesnap-editor-open');
   }
 
   function closeThroughSourceIcon() {
     if (!editor) return;
-
     const icon = sourceIcon;
     if (icon?.isConnected) {
       suppressIconHandling = true;
@@ -35,12 +40,11 @@
       suppressIconHandling = false;
       return;
     }
-
     sourceCard?.remove();
     closeEditorOnly();
   }
 
-  function createSection(title, description) {
+  function createPlaceholderSection(title, description) {
     return `
       <section class="tablesnap-editor-section">
         <div class="tablesnap-editor-section-head">
@@ -96,20 +100,24 @@
           </main>
 
           <aside class="tablesnap-editor-sidebar">
-            ${createSection('Columns', 'Show, rename, and reorder')}
-            ${createSection('Data Cleanup', 'Clean captured values')}
-            ${createSection('Content', 'Links and formatting')}
-            ${createSection('File Settings', 'Filename and headers')}
-            ${createSection('Format Settings', 'Options for the selected format')}
+            <section class="tablesnap-editor-section tablesnap-editor-columns-section">
+              <div class="tablesnap-editor-section-head">
+                <strong>Columns</strong>
+                <span>Show, rename, and reorder</span>
+              </div>
+              <div class="tablesnap-editor-columns" data-columns-panel></div>
+            </section>
+            ${createPlaceholderSection('Data Cleanup', 'Clean captured values')}
+            ${createPlaceholderSection('Content', 'Links and formatting')}
+            ${createPlaceholderSection('File Settings', 'Filename and headers')}
+            ${createPlaceholderSection('Format Settings', 'Options for the selected format')}
           </aside>
         </div>
 
         <footer class="tablesnap-editor-footer">
           <label class="tablesnap-editor-format">
             <span>Format</span>
-            <select disabled aria-label="Export format">
-              <option>CSV</option>
-            </select>
+            <select disabled aria-label="Export format"><option>CSV</option></select>
           </label>
           <div class="tablesnap-editor-footer-actions">
             <button type="button" class="tablesnap-editor-secondary" disabled>Copy</button>
@@ -126,7 +134,6 @@
       searchQuery = event.target.value.trim().toLocaleLowerCase();
       renderPreview();
     });
-
     return root;
   }
 
@@ -142,7 +149,6 @@
   function nearestTarget(icon, candidates) {
     let best = null;
     let bestScore = Number.POSITIVE_INFINITY;
-
     for (const candidate of candidates) {
       if (!(candidate instanceof Element) || !candidate.isConnected) continue;
       const rect = candidate.getBoundingClientRect();
@@ -153,31 +159,25 @@
         bestScore = score;
       }
     }
-
     return bestScore <= 80 ? best : null;
   }
 
   function resolveTargetFromIcon(icon) {
     if (!icon) return { target: null, type: null };
-
     if (icon.dataset.tablesnapModern === 'true' && window.__TableSnapModern?.getModernType) {
-      const candidates = [
-        ...document.querySelectorAll('[role="table"], [role="grid"], [role="treegrid"], div, section')
-      ].filter((candidate) => {
-        const rect = candidate.getBoundingClientRect();
-        const iconRect = icon.getBoundingClientRect();
-        if (Math.abs(rect.top - iconRect.top) > 64) return false;
-        return Boolean(window.__TableSnapModern.getModernType(candidate));
-      });
+      const candidates = [...document.querySelectorAll('[role="table"], [role="grid"], [role="treegrid"], div, section')]
+        .filter((candidate) => {
+          const rect = candidate.getBoundingClientRect();
+          const iconRect = icon.getBoundingClientRect();
+          return Math.abs(rect.top - iconRect.top) <= 64 && Boolean(window.__TableSnapModern.getModernType(candidate));
+        });
       return { target: nearestTarget(icon, candidates), type: 'modern' };
     }
-
     return { target: nearestTarget(icon, [...document.querySelectorAll('table')]), type: 'native' };
   }
 
   function parseSourceTarget() {
     if (!sourceTarget) return { headers: [], rows: [] };
-
     try {
       if (sourceType === 'modern') {
         return window.__TableSnapModern?.parseModernTable?.(sourceTarget) || { headers: [], rows: [] };
@@ -197,12 +197,25 @@
     return { headers, rows };
   }
 
+  function initializeColumns() {
+    columns = snapshot.headers.map((header, sourceIndex) => ({
+      id: `column-${sourceIndex}`,
+      sourceIndex,
+      label: header || `Column ${sourceIndex + 1}`,
+      visible: true
+    }));
+  }
+
+  function visibleColumns() {
+    return columns.filter((column) => column.visible);
+  }
+
   function visibleRowIndexes() {
     if (!searchQuery) return snapshot.rows.map((_, index) => index);
-
+    const searchable = visibleColumns();
     return snapshot.rows.reduce((matches, row, index) => {
-      const haystack = row.join('\n').toLocaleLowerCase();
-      if (haystack.includes(searchQuery)) matches.push(index);
+      const values = searchable.length ? searchable.map((column) => row[column.sourceIndex]) : row;
+      if (values.join('\n').toLocaleLowerCase().includes(searchQuery)) matches.push(index);
       return matches;
     }, []);
   }
@@ -225,10 +238,7 @@
   function renderEmpty(preview, title, description) {
     const empty = document.createElement('div');
     empty.className = 'tablesnap-editor-preview-empty';
-    empty.innerHTML = `
-      <div class="tablesnap-editor-preview-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg>
-      </div>`;
+    empty.innerHTML = '<div class="tablesnap-editor-preview-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M9 5v14"/></svg></div>';
     const strong = document.createElement('strong');
     strong.textContent = title;
     const span = document.createElement('span');
@@ -242,16 +252,15 @@
     const count = editor.querySelector('[data-table-count]');
     const selection = editor.querySelector('[data-selection-count]');
     const totalRows = snapshot.rows.length;
-    const columns = snapshot.headers.length;
-
+    const shownColumns = visibleColumns().length;
+    const totalColumns = columns.length;
+    const columnText = shownColumns === totalColumns ? `${shownColumns} columns` : `${shownColumns} of ${totalColumns} columns`;
     if (count) {
       count.textContent = searchQuery && visibleIndexes.length !== totalRows
-        ? `${visibleIndexes.length} of ${totalRows} rows × ${columns} columns`
-        : `${totalRows} rows × ${columns} columns`;
+        ? `${visibleIndexes.length} of ${totalRows} rows × ${columnText}`
+        : `${totalRows} rows × ${columnText}`;
     }
-    if (selection) {
-      selection.textContent = `${selectedRows.size} row${selectedRows.size === 1 ? '' : 's'} selected`;
-    }
+    if (selection) selection.textContent = `${selectedRows.size} row${selectedRows.size === 1 ? '' : 's'} selected`;
   }
 
   function renderPreview() {
@@ -259,7 +268,6 @@
     const preview = editor.querySelector('[data-table-preview]');
     if (!preview) return;
     preview.replaceChildren();
-
     const visibleIndexes = visibleRowIndexes();
     updateCounters(visibleIndexes);
 
@@ -267,7 +275,11 @@
       renderEmpty(preview, 'No table data found', 'TableSnap could not create a structured preview for this table.');
       return;
     }
-
+    const shownColumns = visibleColumns();
+    if (!shownColumns.length) {
+      renderEmpty(preview, 'No columns selected', 'Enable at least one column from the Columns panel.');
+      return;
+    }
     if (!visibleIndexes.length) {
       renderEmpty(preview, 'No matching rows', 'Try a different search term.');
       return;
@@ -277,30 +289,22 @@
     scroller.className = 'tablesnap-editor-table-scroll';
     const table = document.createElement('table');
     table.className = 'tablesnap-editor-data-table';
-
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     const selectHead = document.createElement('th');
     selectHead.className = 'tablesnap-editor-select-cell';
     const selectAll = createCheckbox('Select all rows', false, () => {
-      if (selectAll.checked) {
-        snapshot.rows.forEach((_, index) => selectedRows.add(index));
-      } else {
-        selectedRows.clear();
-      }
+      if (selectAll.checked) snapshot.rows.forEach((_, index) => selectedRows.add(index));
+      else selectedRows.clear();
       renderPreview();
     });
-    setCheckboxState(
-      selectAll,
-      selectedRows.size === snapshot.rows.length && snapshot.rows.length > 0,
-      selectedRows.size > 0 && selectedRows.size < snapshot.rows.length
-    );
+    setCheckboxState(selectAll, selectedRows.size === snapshot.rows.length && snapshot.rows.length > 0, selectedRows.size > 0 && selectedRows.size < snapshot.rows.length);
     selectHead.append(selectAll);
     headerRow.append(selectHead);
 
-    snapshot.headers.forEach((header) => {
+    shownColumns.forEach((column) => {
       const th = document.createElement('th');
-      th.textContent = header;
+      th.textContent = column.label;
       headerRow.append(th);
     });
     thead.append(headerRow);
@@ -309,7 +313,6 @@
     visibleIndexes.forEach((rowIndex) => {
       const tr = document.createElement('tr');
       if (selectedRows.has(rowIndex)) tr.dataset.selected = 'true';
-
       const selectCell = document.createElement('td');
       selectCell.className = 'tablesnap-editor-select-cell';
       const checkbox = createCheckbox(`Select row ${rowIndex + 1}`, selectedRows.has(rowIndex), () => {
@@ -319,8 +322,8 @@
       });
       selectCell.append(checkbox);
       tr.append(selectCell);
-
-      snapshot.rows[rowIndex].forEach((value) => {
+      shownColumns.forEach((column) => {
+        const value = snapshot.rows[rowIndex][column.sourceIndex] ?? '';
         const td = document.createElement('td');
         td.textContent = value;
         td.title = value.replace(/\s+/g, ' ').trim();
@@ -328,10 +331,133 @@
       });
       tbody.append(tr);
     });
-
     table.append(thead, tbody);
     scroller.append(table);
     preview.append(scroller);
+  }
+
+  function iconButton(label, svg) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tablesnap-editor-column-icon';
+    button.setAttribute('aria-label', label);
+    button.innerHTML = svg;
+    return button;
+  }
+
+  function commitColumnRename(column, input) {
+    const next = input.value.trim();
+    if (next) column.label = next;
+    editingColumnId = null;
+    renderColumnsPanel();
+    renderPreview();
+  }
+
+  function renderColumnsPanel() {
+    if (!editor) return;
+    const panel = editor.querySelector('[data-columns-panel]');
+    if (!panel) return;
+    panel.replaceChildren();
+
+    columns.forEach((column) => {
+      const row = document.createElement('div');
+      row.className = 'tablesnap-editor-column-row';
+      row.dataset.columnId = column.id;
+      if (!column.visible) row.dataset.hidden = 'true';
+      if (draggingColumnId === column.id) row.dataset.dragging = 'true';
+
+      const drag = document.createElement('span');
+      drag.className = 'tablesnap-editor-column-drag';
+      drag.draggable = editingColumnId !== column.id;
+      drag.setAttribute('role', 'button');
+      drag.setAttribute('aria-label', `Reorder ${column.label}`);
+      drag.tabIndex = -1;
+      drag.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="7" cy="5" r="1"/><circle cx="13" cy="5" r="1"/><circle cx="7" cy="10" r="1"/><circle cx="13" cy="10" r="1"/><circle cx="7" cy="15" r="1"/><circle cx="13" cy="15" r="1"/></svg>';
+      drag.addEventListener('dragstart', (event) => {
+        draggingColumnId = column.id;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', column.id);
+        row.dataset.dragging = 'true';
+      });
+      drag.addEventListener('dragend', () => {
+        draggingColumnId = null;
+        panel.querySelectorAll('[data-dragging]').forEach((item) => delete item.dataset.dragging);
+      });
+
+      const visibility = createCheckbox(`Show ${column.label}`, column.visible, () => {
+        column.visible = visibility.checked;
+        renderColumnsPanel();
+        renderPreview();
+      });
+
+      const body = document.createElement('div');
+      body.className = 'tablesnap-editor-column-body';
+
+      if (editingColumnId === column.id) {
+        row.dataset.editing = 'true';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'tablesnap-editor-column-input';
+        input.value = column.label;
+        input.setAttribute('aria-label', `Rename ${column.label}`);
+        const save = iconButton('Save column name', '<svg viewBox="0 0 20 20"><path d="m4 10 4 4 8-8"/></svg>');
+        const cancel = iconButton('Cancel rename', '<svg viewBox="0 0 20 20"><path d="m5 5 10 10M15 5 5 15"/></svg>');
+        save.classList.add('is-confirm');
+        save.addEventListener('click', () => commitColumnRename(column, input));
+        cancel.addEventListener('click', () => {
+          editingColumnId = null;
+          renderColumnsPanel();
+        });
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commitColumnRename(column, input);
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            editingColumnId = null;
+            renderColumnsPanel();
+          }
+        });
+        body.append(input, save, cancel);
+        requestAnimationFrame(() => {
+          input.focus({ preventScroll: true });
+          input.select();
+        });
+      } else {
+        const label = document.createElement('span');
+        label.className = 'tablesnap-editor-column-label';
+        label.textContent = column.label;
+        label.title = column.label;
+        const edit = iconButton(`Rename ${column.label}`, '<svg viewBox="0 0 20 20"><path d="m4 14-.5 2.5L6 16l8.5-8.5-2-2zM11.5 6.5l2 2"/></svg>');
+        edit.addEventListener('click', () => {
+          editingColumnId = column.id;
+          renderColumnsPanel();
+        });
+        body.append(label, edit);
+      }
+
+      row.addEventListener('dragover', (event) => {
+        if (!draggingColumnId || draggingColumnId === column.id) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      });
+      row.addEventListener('drop', (event) => {
+        event.preventDefault();
+        const draggedId = event.dataTransfer.getData('text/plain') || draggingColumnId;
+        if (!draggedId || draggedId === column.id) return;
+        const fromIndex = columns.findIndex((item) => item.id === draggedId);
+        const toIndex = columns.findIndex((item) => item.id === column.id);
+        if (fromIndex < 0 || toIndex < 0) return;
+        const [moved] = columns.splice(fromIndex, 1);
+        columns.splice(toIndex, 0, moved);
+        draggingColumnId = null;
+        renderColumnsPanel();
+        renderPreview();
+      });
+
+      row.append(drag, visibility, body);
+      panel.append(row);
+    });
   }
 
   function prepareSourceCardHost(card) {
@@ -354,31 +480,30 @@
   function openEditor(card) {
     sourceCard = card;
     sourceIcon = document.querySelector('.tablesnap-export-icon[data-card-open="true"]') || sourceIcon;
-
     if (!sourceTarget && sourceIcon) {
       const resolved = resolveTargetFromIcon(sourceIcon);
       sourceTarget = resolved.target;
       sourceType = resolved.type;
     }
-
     if (editor?.isConnected) return;
 
     snapshot = normalizedSnapshot(parseSourceTarget());
     selectedRows = new Set(snapshot.rows.map((_, index) => index));
     searchQuery = '';
+    initializeColumns();
 
     prepareSourceCardHost(sourceCard);
     editor = createEditor();
     sourceCard.append(editor);
     document.documentElement.classList.add('tablesnap-editor-open');
+    renderColumnsPanel();
     renderPreview();
     requestAnimationFrame(() => editor?.classList.add('is-open'));
     editor.querySelector('[data-table-search]')?.focus({ preventScroll: true });
   }
 
   function findSourceCard() {
-    return [...document.querySelectorAll(SOURCE_CARD_SELECTOR)]
-      .find((card) => !card.closest(EDITOR_SELECTOR));
+    return [...document.querySelectorAll(SOURCE_CARD_SELECTOR)].find((card) => !card.closest(EDITOR_SELECTOR));
   }
 
   document.addEventListener('pointerdown', (event) => {
@@ -394,14 +519,13 @@
     if (suppressIconHandling || !editor) return;
     const icon = event.target.closest?.('.tablesnap-export-icon');
     if (!icon || icon !== sourceIcon) return;
-
     event.preventDefault();
     event.stopImmediatePropagation();
     closeThroughSourceIcon();
   }, true);
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && editor) {
+    if (event.key === 'Escape' && editor && editingColumnId === null) {
       event.preventDefault();
       closeThroughSourceIcon();
     }
@@ -409,12 +533,10 @@
 
   const tableEditorObserver = new MutationObserver(() => {
     const card = findSourceCard();
-
     if (card) {
       if (card !== sourceCard) openEditor(card);
       return;
     }
-
     if (editor && sourceCard && !sourceCard.isConnected) closeEditorOnly();
   });
 
