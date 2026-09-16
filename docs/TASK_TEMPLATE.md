@@ -43,9 +43,8 @@ Task IDs or None
 - Main regression risk
 - Safe rollback boundary
 
-## Autonomous execution
+## Execution authorization
 
-State whether Codex may merge after all checks pass. Use one of:
+Roadmap inclusion does not authorize implementation. Record who or what authorized the task.
 
-- Codex may implement, verify, open a PR, and merge after every acceptance criterion passes.
-- Codex may implement, verify, and open a PR; human browser QA is required before merge.
+After authorization, Codex may implement, verify, and open a PR. Codex must not merge the PR. Document any manual browser QA required before the user reviews and merges it.

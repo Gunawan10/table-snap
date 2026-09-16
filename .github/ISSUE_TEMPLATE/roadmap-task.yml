@@ -59,11 +59,22 @@ body:
       required: true
 
   - type: dropdown
-    id: autonomous_execution
+    id: execution_authorization
     attributes:
-      label: Autonomous execution
+      label: Execution authorization
+      description: Planning an issue does not authorize implementation.
       options:
-        - Codex may merge after every acceptance criterion passes
-        - Human browser QA is required before merge
+        - Planned only — do not implement
+        - Authorized — implement, verify, and open PR
+    validations:
+      required: true
+
+  - type: dropdown
+    id: manual_qa
+    attributes:
+      label: Manual browser QA
+      options:
+        - Required before user merge
+        - Not required
     validations:
       required: true

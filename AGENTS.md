@@ -36,7 +36,9 @@ GitHub Issues are the execution queue. `TASKS.md` is a human-readable index, not
 
 Roadmap entries and GitHub issues are plans, not authorization to implement them.
 
-Do not start a task, milestone, scheduled run, branch, code change, PR, or merge unless the user explicitly authorizes that task or milestone. Phrases such as "set up Codex", "organize the roadmap", or "manage the project" do not authorize feature implementation.
+Before a task is authorized, Codex may audit the repository and organize or clarify ROADMAP.md, TASKS.md, and GitHub Issues. It may not create an implementation branch, change product code, or start a feature.
+
+Do not start a task, milestone, scheduled implementation run, branch, code change, or PR unless the user explicitly authorizes that task or milestone. Phrases such as "set up Codex", "organize the roadmap", or "manage the project" authorize project-management cleanup only, not feature implementation.
 
 After the user explicitly authorizes a task:
 
@@ -49,10 +51,9 @@ After the user explicitly authorizes a task:
 7. Run all required verification.
 8. Inspect the complete diff for unrelated changes, secrets, generated output, and scope creep.
 9. Open a PR that links the issue.
-10. Merge only when the issue explicitly permits autonomous merge and every automated acceptance criterion passes.
-11. Close the completed issue and update dependent task status.
+10. Stop at the open PR and report verification results and any manual QA gaps.
 
-Autonomy applies after task authorization; it does not grant permission to choose the next roadmap feature. Do not start multiple tasks that edit the same hotspot files.
+Never merge a PR. The user reviews and merges it. Autonomy applies after task authorization; it does not grant permission to choose the next roadmap feature. Do not start multiple tasks that edit the same hotspot files.
 
 ## When human input is required
 
