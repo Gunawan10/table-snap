@@ -158,7 +158,7 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-const observer = new MutationObserver(() => {
+const tableEditorObserver = new MutationObserver(() => {
   const card = findSourceCard();
 
   if (card) {
@@ -169,4 +169,4 @@ const observer = new MutationObserver(() => {
   if (editor && sourceCard && !sourceCard.isConnected) closeEditorOnly();
 });
 
-observer.observe(document.documentElement, { childList: true, subtree: true });
+tableEditorObserver.observe(document.documentElement, { childList: true, subtree: true });
