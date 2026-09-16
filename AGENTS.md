@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file defines the standing instructions for coding agents working in TableSnap. Read it before making changes, together with `README.md`, `ROADMAP.md`, and the selected GitHub issue.
+This file defines the standing instructions for coding agents working in TableSnap. Read it before making changes, together with `README.md`, `CHANGELOG.md`, and any task explicitly approved by the user.
 
 ## Product
 
@@ -24,19 +24,19 @@ Non-negotiable product principles:
 
 Use these sources in this order:
 
-1. The selected GitHub issue: exact task scope, dependencies, and acceptance criteria.
-2. This `AGENTS.md`: standing engineering and product constraints.
-3. `ROADMAP.md`: release direction and sequencing.
+1. The user's explicit task approval: authorization and scope.
+2. A selected GitHub issue, when one exists: acceptance criteria and discussion.
+3. This `AGENTS.md`: standing engineering and product constraints.
 4. `README.md`: currently shipped behavior.
 5. `CHANGELOG.md`: historical release behavior.
 
-GitHub Issues are the execution queue. `TASKS.md` is a human-readable index, not a second issue tracker.
+Private roadmap material is planning context only. Do not copy it into this public repository or create a public GitHub Issue unless the user explicitly approves that task.
 
 ## Command-gated autonomous workflow
 
 Roadmap entries and GitHub issues are plans, not authorization to implement them.
 
-Before a task is authorized, Codex may audit the repository and organize or clarify ROADMAP.md, TASKS.md, and GitHub Issues. It may not create an implementation branch, change product code, or start a feature.
+Before a task is authorized, Codex may audit the repository and report findings. It may organize a private roadmap when the user provides one, but it must not publish that roadmap, create GitHub Issues, create an implementation branch, change product code, or start a feature without explicit approval.
 
 Do not start a task, milestone, scheduled implementation run, branch, code change, or PR unless the user explicitly authorizes that task or milestone. Phrases such as "set up Codex", "organize the roadmap", or "manage the project" authorize project-management cleanup only, not feature implementation.
 
@@ -63,7 +63,7 @@ Continue autonomously for normal implementation choices. Stop and request a deci
 - Adding a production dependency or external service.
 - Destructive or irreversible repository operations.
 - Publishing a Chrome Web Store release.
-- Choosing between materially different UX directions not resolved by the issue or roadmap.
+- Choosing between materially different UX directions not resolved by the approved task.
 - Handling credentials, billing, legal text, or user data.
 - Bypassing a failing required check.
 
@@ -71,7 +71,7 @@ Do not request confirmation for ordinary refactors, test additions, bug fixes, b
 
 ## Engineering rules
 
-- Use plain JavaScript, HTML, and CSS unless the roadmap explicitly approves a migration.
+- Use plain JavaScript, HTML, and CSS unless the user explicitly approves a migration.
 - Preserve Chrome Manifest V3 compatibility.
 - Never introduce `eval`, `new Function`, remotely hosted JavaScript, or runtime code downloads.
 - Keep `dist/` generated and out of source control.
