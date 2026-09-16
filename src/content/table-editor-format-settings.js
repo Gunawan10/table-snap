@@ -13,6 +13,19 @@
     { id: 'ndjson', label: 'NDJSON', extension: 'ndjson' }
   ];
 
+  const FORMAT_ICONS = {
+    xlsx: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="11" height="18" rx="1.5" fill="currentColor" stroke="none"/><path d="M8 8.5l3 6M11 8.5l-3 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M15 6h5v12h-5M15 10h5M15 14h5M17.5 6v12"/></svg>',
+    csv: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5zM14 3v5h5"/><path d="M8 12h8M8 15h8M8 18h5"/></svg>',
+    json: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4a2 2 0 0 0-2 2v3c0 1.7-.7 3-2 3 1.3 0 2 1.3 2 3v3a2 2 0 0 0 2 2M16 4a2 2 0 0 1 2 2v3c0 1.7.7 3 2 3-1.3 0-2 1.3-2 3v3a2 2 0 0 1-2 2"/></svg>',
+    markdown: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15V9l2.5 2.5L12 9v6M15 12l2 2 2-2M17 14V9"/></svg>',
+    png: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="15.5" cy="8.5" r="1"/><path d="m3 17 5-5 4 4 2-2 7 7"/></svg>',
+    pdf: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5zM14 3v5h5"/><path d="M8 16v-5h2a1.5 1.5 0 0 1 0 3H8M13 11v5h1a2 2 0 0 0 2-2v-1a2 2 0 0 0-2-2h-1M18 16v-5h3M18 13h2"/></svg>',
+    tsv: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+    html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>',
+    sql: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+    ndjson: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h9l5 5v13H5zM14 3v5h5"/><path d="M8 12h2M8 15h5M8 18h7"/></svg>'
+  };
+
   const DEFAULT_OPTIONS = {
     json: { prettyPrint: true, indentation: 2, headersAsKeys: true, includeEmptyValues: true },
     sql: { tableName: 'table_data', dialect: 'mysql', includeColumnNames: true, quoteIdentifiers: true, nullEmptyValues: false, multiRowInsert: false },
@@ -174,6 +187,20 @@
     if (icon) {
       icon.dataset.format = meta.id;
       icon.setAttribute('aria-label', `${meta.label} format`);
+      icon.innerHTML = FORMAT_ICONS[meta.id] || FORMAT_ICONS.csv;
+    }
+  }
+
+  function decorateActionButtons(editor) {
+    const copyButton = editor.querySelector('.tablesnap-editor-secondary');
+    const exportButton = editor.querySelector('.tablesnap-editor-primary');
+    if (copyButton && copyButton.dataset.iconReady !== 'true') {
+      copyButton.dataset.iconReady = 'true';
+      copyButton.innerHTML = '<svg class="tablesnap-editor-action-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Copy</span>';
+    }
+    if (exportButton && exportButton.dataset.iconReady !== 'true') {
+      exportButton.dataset.iconReady = 'true';
+      exportButton.innerHTML = '<svg class="tablesnap-editor-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/><path d="M4 17v3h16v-3"/></svg><span>Export</span>';
     }
   }
 
@@ -198,7 +225,6 @@
       const icon = document.createElement('span');
       icon.className = 'tablesnap-editor-format-icon';
       icon.dataset.formatIcon = 'true';
-      icon.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.75h6.5L15 6.25V17H5z"/><path d="M11.5 2.75v3.5H15M7.5 9h5M7.5 11.5h5M7.5 14h3.5"/></svg>';
       const chevron = document.createElement('svg');
       chevron.className = 'tablesnap-editor-format-chevron';
       chevron.setAttribute('viewBox', '0 0 20 20');
@@ -227,6 +253,7 @@
     activeEditor = editor;
     format = 'csv';
     options = cloneOptions();
+    decorateActionButtons(editor);
     setupFormatSelect(editor);
     renderFormatPanel(editor);
     window.__TableSnapEditorSettings?.setExtension?.('csv');
