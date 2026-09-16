@@ -32,26 +32,27 @@ Use these sources in this order:
 
 GitHub Issues are the execution queue. `TASKS.md` is a human-readable index, not a second issue tracker.
 
-## Autonomous workflow
+## Command-gated autonomous workflow
 
-When asked to continue TableSnap work without a specific task:
+Roadmap entries and GitHub issues are plans, not authorization to implement them.
 
-1. Inspect open GitHub issues.
-2. Select the lowest-numbered issue whose title starts with `[Ready]`.
-3. Confirm every dependency is complete.
-4. Change its title prefix to `[In Progress]`.
-5. Create a focused branch named `codex/TS-<id>-<short-name>`.
-6. Write a short implementation plan in the working notes or PR description, then proceed without waiting for routine approval.
-7. Implement only that issue.
-8. Add or update regression coverage.
-9. Run all required verification.
-10. Inspect the complete diff for unrelated changes, secrets, generated output, and scope creep.
-11. Open a PR that links the issue.
-12. Merge only when the issue explicitly permits autonomous merge and every automated acceptance criterion passes.
-13. Close the completed issue and promote newly unblocked issues from `[Blocked]` to `[Ready]`.
-14. Update `TASKS.md` only when queue structure or dependencies change materially.
+Do not start a task, milestone, scheduled run, branch, code change, PR, or merge unless the user explicitly authorizes that task or milestone. Phrases such as "set up Codex", "organize the roadmap", or "manage the project" do not authorize feature implementation.
 
-Do not start multiple tasks that edit the same hotspot files. Documentation or isolated test work may run in parallel; parser, content-script, export-card, and popup changes should normally remain sequential.
+After the user explicitly authorizes a task:
+
+1. Inspect the selected issue and confirm its dependencies are complete.
+2. Change its title prefix to `[In Progress]`.
+3. Create a focused branch named `codex/TS-<id>-<short-name>`.
+4. Write a short implementation plan, then proceed without requesting routine follow-up.
+5. Implement only that issue.
+6. Add or update regression coverage.
+7. Run all required verification.
+8. Inspect the complete diff for unrelated changes, secrets, generated output, and scope creep.
+9. Open a PR that links the issue.
+10. Merge only when the issue explicitly permits autonomous merge and every automated acceptance criterion passes.
+11. Close the completed issue and update dependent task status.
+
+Autonomy applies after task authorization; it does not grant permission to choose the next roadmap feature. Do not start multiple tasks that edit the same hotspot files.
 
 ## When human input is required
 
