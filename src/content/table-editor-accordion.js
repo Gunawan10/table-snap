@@ -2,6 +2,13 @@
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
   const SECTION_SELECTOR = '.tablesnap-editor-sidebar > .tablesnap-editor-section';
   const DEFAULT_EXPANDED = new Set(['Columns']);
+  const SECTION_ICONS = {
+    Columns: '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M8 4v12M12 4v12"/></svg>',
+    'Data Cleanup': '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 14 5-5 3 3-5 5H5zM10 9l2-2 3 3-2 2"/><path d="M14.5 3.5v2M13.5 4.5h2M5 4v2M4 5h2"/></svg>',
+    Content: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 6.5 6.5 5A3 3 0 0 0 2.3 9.3L5 12a3 3 0 0 0 4.2 0l1.2-1.2"/><path d="m12 13.5 1.5 1.5a3 3 0 0 0 4.2-4.3L15 8a3 3 0 0 0-4.2 0L9.6 9.2"/></svg>',
+    'File Settings': '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6l4 4v11H5zM11 2.5v4h4"/><circle cx="10" cy="12" r="2.2"/><path d="M10 8.8v1M10 14.2v1M6.8 12h1M12.2 12h1"/></svg>',
+    'Format Settings': '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 6 3 10l3.5 4M13.5 6 17 10l-3.5 4M11.5 4l-3 12"/></svg>'
+  };
 
   let activeEditor = null;
   const sectionState = new Map();
@@ -55,6 +62,11 @@
     trigger.className = 'tablesnap-editor-accordion-trigger';
     trigger.dataset.accordionTrigger = 'true';
 
+    const icon = document.createElement('span');
+    icon.className = 'tablesnap-editor-section-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = SECTION_ICONS[title] || SECTION_ICONS.Columns;
+
     const copy = document.createElement('span');
     copy.className = 'tablesnap-editor-accordion-copy';
     const strong = document.createElement('strong');
@@ -62,7 +74,7 @@
     const description = document.createElement('span');
     description.textContent = descriptionText;
     copy.append(strong, description);
-    trigger.append(copy);
+    trigger.append(icon, copy);
 
     const actions = document.createElement('span');
     actions.className = 'tablesnap-editor-accordion-actions';
