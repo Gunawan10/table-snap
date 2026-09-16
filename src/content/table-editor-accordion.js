@@ -4,7 +4,7 @@
   const DEFAULT_EXPANDED = new Set(['Columns', 'Data Cleanup', 'Content', 'File Settings']);
 
   let activeEditor = null;
-  let expandedSections = new Set(DEFAULT_EXPANDED);
+  const sectionState = new Map();
 
   function sectionTitle(section) {
     return section.querySelector('.tablesnap-editor-section-head strong')?.textContent?.trim() || '';
@@ -16,10 +16,10 @@
 
   function setSectionExpanded(section, expanded) {
     const title = sectionTitle(section);
+    sectionState.set(title, expanded);
     section.dataset.accordionExpanded = String(expanded);
     const trigger = section.querySelector(':scope > .tablesnap-editor-section-head [data-accordion-trigger]');
     trigger?.setAttribute('aria-expanded', String(expanded));
-    trigger?.setAttribute('aria-label', `${expanded ? 'Collapse' : 'Expand'} ${title}`);
     sectionBodyNodes(section).forEach((node) => {
       node.hidden = !expanded;
     });
@@ -28,14 +28,10 @@
   function syncSections(editor) {
     const sections = [...editor.querySelectorAll(SECTION_SELECTOR)];
     sections.forEach((section) => {
-      setSectionExpanded(section, expandedSections.has(sectionTitle(section)));
+      const title = sectionTitle(section);
+      const expanded = sectionState.has(title) ? sectionState.get(title) : DEFAULT_EXPANDED.has(title);
+      setSectionExpanded(section, expanded);
     });
-  }
-
-  function toggleSection(editor, title) {
-    if (expandedSections.has(title)) expandedSections.delete(title);
-    else expandedSections.add(title);
-    syncSections(editor);
   }
 
   function buildTrigger(section, head) {
@@ -44,36 +40,52 @@
     const titleNode = head.querySelector('strong');
     const descriptionNode = head.querySelector('span');
     const title = titleNode?.textContent?.trim() || 'Section';
+    const descriptionText = descriptionNode?.textContent?.trim() || '';
+    const reset = head.querySelector('[data-cleanup-reset]');
 
     const trigger = document.createElement('button');
     trigger.type = 'button';
     trigger.className = 'tablesnap-editor-accordion-trigger';
     trigger.dataset.accordionTrigger = 'true';
-    trigger.setAttribute('aria-expanded', String(expandedSections.has(title)));
-    trigger.setAttribute('aria-label', `${expandedSections.has(title) ? 'Collapse' : 'Expand'} ${title}`);
 
     const copy = document.createElement('span');
     copy.className = 'tablesnap-editor-accordion-copy';
     const strong = document.createElement('strong');
     strong.textContent = title;
     const description = document.createElement('span');
-    description.textContent = descriptionNode?.textContent?.trim() || '';
+    description.textContent = descriptionText;
     copy.append(strong, description);
 
-    const chevron = document.createElement('span');
-    chevron.className = 'tablesnap-editor-accordion-chevron-wrap';
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.innerHTML = '<svg class="tablesnap-editor-accordion-chevron" viewBox="0 0 20 20"><path d="m6 8 4 4 4-4"/></svg>';
-    trigger.append(copy, chevron);
+    trigger.append(copy);
 
-    const reset = head.querySelector('[data-cleanup-reset]');
-    head.replaceChildren(trigger);
-    if (reset) head.append(reset);
+    const actions = document.createElement('span');
+    actions.className = 'tablesnap-editor-accordion-actions';
+
+    if (reset) {
+      reset.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+      actions.append(reset);
+    }
+
+    const chevron = document.createElement('svg');
+    chevron.className = 'tablesnap-editor-accordion-chevron';
+    chevron.setAttribute('viewBox', '0 0 20 20');
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.innerHTML = '<path d="m6 8 4 4 4-4"/>';
+    actions.append(chevron);
+
+    head.replaceChildren(trigger, actions);
 
     trigger.addEventListener('click', () => {
-      const editor = section.closest(EDITOR_SELECTOR);
-      if (!editor) return;
-      toggleSection(editor, title);
+      const expanded = section.dataset.accordionExpanded === 'true';
+      setSectionExpanded(section, !expanded);
+      if (!expanded) section.scrollIntoView({ block: 'nearest' });
+    });
+
+    actions.addEventListener('click', (event) => {
+      if (event.target.closest('[data-cleanup-reset]')) return;
+      trigger.click();
     });
   }
 
@@ -99,7 +111,7 @@
     const editor = document.querySelector(EDITOR_SELECTOR);
     if (!editor) {
       activeEditor = null;
-      expandedSections = new Set(DEFAULT_EXPANDED);
+      sectionState.clear();
       return;
     }
     setupEditor(editor);
