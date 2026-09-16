@@ -2,7 +2,7 @@
 
 Last updated: 16 September 2026
 
-This document defines product direction and release sequencing. GitHub Issues contain executable task scope and acceptance criteria.
+This document defines product direction and possible release sequencing. Roadmap entries and GitHub Issues are planning artifacts only; implementation starts only after explicit user authorization.
 
 ## Product positioning
 
@@ -68,7 +68,7 @@ Released: September 2026
 - Self-contained local PDF generation
 - Manifest V3 remote-code build validation
 
-## Active milestone
+## Planned milestone — not authorized for implementation
 
 ### v1.2.0 — Capture Studio and export control
 
@@ -88,7 +88,7 @@ Planned outcomes:
 - Apply one cleanup result consistently across exporters
 - Preserve existing one-click quick export
 
-Execution order:
+Proposed execution order:
 
 1. Automated regression test foundation — TS-111 / issue #1
 2. Capture Studio data model and integration boundary — TS-120 / issue #2
