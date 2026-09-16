@@ -41,7 +41,8 @@
         "content/table-editor-foundation.js",
         "content/table-editor-content-file-settings.js",
         "content/table-editor-format-settings.js",
-        "content/table-editor-accordion.js"
+        "content/table-editor-accordion.js",
+        "content/table-editor-backdrop-guard.js"
       ],
       "css": [
         "content/content.css",
