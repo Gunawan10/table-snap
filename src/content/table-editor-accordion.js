@@ -48,7 +48,7 @@
     const descriptionNode = head.querySelector('span');
     const title = titleNode?.textContent?.trim() || 'Section';
     const descriptionText = descriptionNode?.textContent?.trim() || '';
-    const reset = head.querySelector('[data-cleanup-reset]');
+    head.querySelector('[data-cleanup-reset]')?.remove();
 
     const trigger = document.createElement('button');
     trigger.type = 'button';
@@ -66,11 +66,6 @@
 
     const actions = document.createElement('span');
     actions.className = 'tablesnap-editor-accordion-actions';
-
-    if (reset) {
-      reset.addEventListener('click', (event) => event.stopPropagation());
-      actions.append(reset);
-    }
 
     const chevronButton = document.createElement('button');
     chevronButton.type = 'button';
