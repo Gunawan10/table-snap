@@ -166,11 +166,12 @@
     const head = editor.querySelector('.tablesnap-editor-workspace-head');
     const search = editor.querySelector('.tablesnap-editor-search');
     if (!head || !search) return;
-    head.querySelector('[data-output-preview-toggle]')?.remove();
+    head.querySelectorAll('[data-output-preview-toggle]').forEach((toggle) => toggle.remove());
 
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.outputPreviewToggle = 'true';
+    button.dataset.previewTarget = isCode ? 'table' : 'json';
     button.className = 'tablesnap-editor-preview-toggle';
     if (isCode) {
       button.setAttribute('aria-label', 'Back to table preview');
@@ -238,7 +239,7 @@
     if (!editor?.isConnected) return;
     codeMode = false;
     codeSearch = '';
-    editor.querySelector('[data-output-preview-toggle]')?.remove();
+    editor.querySelectorAll('[data-output-preview-toggle]').forEach((toggle) => toggle.remove());
     setHeader(editor, false);
     setSearch(editor, '', true);
   }
