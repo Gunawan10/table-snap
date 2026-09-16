@@ -163,9 +163,10 @@
   }
 
   function ensurePreviewToggle(editor, isCode) {
-    const row = editor.querySelector('.tablesnap-editor-preview-title-row');
-    if (!row) return;
-    row.querySelector('[data-output-preview-toggle]')?.remove();
+    const head = editor.querySelector('.tablesnap-editor-workspace-head');
+    const search = editor.querySelector('.tablesnap-editor-search');
+    if (!head || !search) return;
+    head.querySelector('[data-output-preview-toggle]')?.remove();
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -189,7 +190,7 @@
         renderCode(editor);
       });
     }
-    row.insertBefore(button, row.firstChild);
+    head.insertBefore(button, search);
   }
 
   function renderCode(editor) {
