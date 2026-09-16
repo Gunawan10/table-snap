@@ -37,14 +37,16 @@
         "content/tabler-format-icons.js",
         "content/export-action-state.js",
         "content/card-position-fix.js",
-        "content/export-error-state.js"
+        "content/export-error-state.js",
+        "content/table-editor-foundation.js"
       ],
       "css": [
         "content/content.css",
         "content/export-grid-v2.css",
         "content/tabler-format-icons.css",
         "content/export-action-state.css",
-        "content/save-loading.css"
+        "content/save-loading.css",
+        "content/table-editor-foundation.css"
       ],
       "run_at": "document_idle"
     }
