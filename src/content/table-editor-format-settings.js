@@ -33,6 +33,8 @@
     html: { includeHeaders: true, basicStyling: false, semanticHtml: true, minify: false, tableAttributes: '' }
   };
 
+  const FORMAT_SETTINGS_FORMATS = new Set(['json', 'html', 'sql', 'ndjson']);
+
   let activeEditor = null;
   let format = 'csv';
   let options = cloneOptions();
@@ -158,6 +160,12 @@
   function renderFormatPanel(editor) {
     const section = findFormatSection(editor);
     if (!section) return;
+
+    const hasSettings = FORMAT_SETTINGS_FORMATS.has(format);
+    section.hidden = !hasSettings;
+    section.style.setProperty('display', hasSettings ? '' : 'none', hasSettings ? '' : 'important');
+    if (!hasSettings) return;
+
     section.classList.add('tablesnap-editor-format-section');
     section.querySelector('.tablesnap-editor-section-placeholder')?.remove();
 
@@ -174,12 +182,6 @@
     else if (format === 'sql') renderSql(panel);
     else if (format === 'ndjson') renderNdjson(panel);
     else if (format === 'html') renderHtml(panel);
-    else {
-      const empty = document.createElement('div');
-      empty.className = 'tablesnap-editor-format-empty';
-      empty.textContent = 'No extra settings for this format.';
-      panel.append(empty);
-    }
   }
 
   function updateFormatControl(label, meta) {
