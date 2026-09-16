@@ -58,6 +58,7 @@ await cp('src/content/export-error-state.js', 'dist/content/export-error-state.j
 await cp('src/content/tabler-format-icons.js', 'dist/content/tabler-format-icons.js');
 await cp('src/content/export-action-state.js', 'dist/content/export-action-state.js');
 await cp('src/content/table-editor-foundation.js', 'dist/content/table-editor-foundation.js');
+await cp('src/content/table-editor-content-file-settings.js', 'dist/content/table-editor-content-file-settings.js');
 
 await build({
   entryPoints: ['src/background/service-worker.js'],
