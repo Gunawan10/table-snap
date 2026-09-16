@@ -1,6 +1,14 @@
 (() => {
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
   const SOURCE_CARD_SELECTOR = '.tablesnap-export-card, .tablesnap-modern-export-card';
+  const DEFAULT_CLEANUP = Object.freeze({
+    trimWhitespace: false,
+    collapseSpaces: false,
+    normalizeLineBreaks: false,
+    removeEmptyRows: false,
+    removeEmptyColumns: false,
+    removeDuplicateRows: false
+  });
 
   let editor = null;
   let sourceCard = null;
@@ -8,12 +16,13 @@
   let sourceTarget = null;
   let sourceType = null;
   let suppressIconHandling = false;
-  let snapshot = { headers: [], rows: [] };
+  let capturedSnapshot = { headers: [], rows: [] };
   let selectedRows = new Set();
   let searchQuery = '';
   let columns = [];
   let editingColumnId = null;
   let draggingColumnId = null;
+  let cleanup = { ...DEFAULT_CLEANUP };
 
   function closeEditorOnly() {
     editor?.remove();
@@ -22,12 +31,13 @@
     sourceIcon = null;
     sourceTarget = null;
     sourceType = null;
-    snapshot = { headers: [], rows: [] };
+    capturedSnapshot = { headers: [], rows: [] };
     selectedRows = new Set();
     searchQuery = '';
     columns = [];
     editingColumnId = null;
     draggingColumnId = null;
+    cleanup = { ...DEFAULT_CLEANUP };
     document.documentElement.classList.remove('tablesnap-editor-open');
   }
 
@@ -107,7 +117,16 @@
               </div>
               <div class="tablesnap-editor-columns" data-columns-panel></div>
             </section>
-            ${createPlaceholderSection('Data Cleanup', 'Clean captured values')}
+            <section class="tablesnap-editor-section tablesnap-editor-cleanup-section">
+              <div class="tablesnap-editor-section-head tablesnap-editor-cleanup-head">
+                <div>
+                  <strong>Data Cleanup</strong>
+                  <span>Clean captured values</span>
+                </div>
+                <button type="button" class="tablesnap-editor-reset-cleanup" data-cleanup-reset>Reset</button>
+              </div>
+              <div class="tablesnap-editor-cleanup-options" data-cleanup-panel></div>
+            </section>
             ${createPlaceholderSection('Content', 'Links and formatting')}
             ${createPlaceholderSection('File Settings', 'Filename and headers')}
             ${createPlaceholderSection('Format Settings', 'Options for the selected format')}
@@ -129,9 +148,14 @@
     root.addEventListener('click', (event) => {
       if (event.target.closest('[data-editor-close]')) closeThroughSourceIcon();
     });
-
     root.querySelector('[data-table-search]')?.addEventListener('input', (event) => {
       searchQuery = event.target.value.trim().toLocaleLowerCase();
+      renderPreview();
+    });
+    root.querySelector('[data-cleanup-reset]')?.addEventListener('click', () => {
+      cleanup = { ...DEFAULT_CLEANUP };
+      renderCleanupPanel();
+      renderColumnsPanel();
       renderPreview();
     });
     return root;
@@ -198,7 +222,7 @@
   }
 
   function initializeColumns() {
-    columns = snapshot.headers.map((header, sourceIndex) => ({
+    columns = capturedSnapshot.headers.map((header, sourceIndex) => ({
       id: `column-${sourceIndex}`,
       sourceIndex,
       label: header || `Column ${sourceIndex + 1}`,
@@ -206,18 +230,66 @@
     }));
   }
 
-  function visibleColumns() {
-    return columns.filter((column) => column.visible);
+  function cleanupValue(value) {
+    let text = String(value ?? '');
+    if (cleanup.normalizeLineBreaks) {
+      text = text.replace(/\r\n?/g, '\n').replace(/[ \t]*\n[ \t]*/g, '\n');
+    }
+    if (cleanup.collapseSpaces) text = text.replace(/[ \t]+/g, ' ');
+    if (cleanup.trimWhitespace) text = text.trim();
+    return text;
   }
 
-  function visibleRowIndexes() {
-    if (!searchQuery) return snapshot.rows.map((_, index) => index);
-    const searchable = visibleColumns();
-    return snapshot.rows.reduce((matches, row, index) => {
-      const values = searchable.length ? searchable.map((column) => row[column.sourceIndex]) : row;
-      if (values.join('\n').toLocaleLowerCase().includes(searchQuery)) matches.push(index);
-      return matches;
-    }, []);
+  function transformedHeaders() {
+    return capturedSnapshot.headers.map(cleanupValue);
+  }
+
+  function transformedRows() {
+    let result = capturedSnapshot.rows.map((row, sourceRowIndex) => ({
+      sourceRowIndex,
+      values: row.map(cleanupValue)
+    }));
+    if (cleanup.removeEmptyRows) {
+      result = result.filter((row) => row.values.some((value) => value.trim() !== ''));
+    }
+    if (cleanup.removeDuplicateRows) {
+      const seen = new Set();
+      result = result.filter((row) => {
+        const key = JSON.stringify(row.values);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    return result;
+  }
+
+  function effectiveColumnSourceIndexes(rows = transformedRows()) {
+    if (!cleanup.removeEmptyColumns || !capturedSnapshot.headers.length || !rows.length) {
+      return capturedSnapshot.headers.map((_, index) => index);
+    }
+    return capturedSnapshot.headers
+      .map((_, index) => index)
+      .filter((index) => rows.some((row) => String(row.values[index] ?? '').trim() !== ''));
+  }
+
+  function effectiveColumns(rows = transformedRows()) {
+    const allowed = new Set(effectiveColumnSourceIndexes(rows));
+    return columns.filter((column) => column.visible && allowed.has(column.sourceIndex));
+  }
+
+  function visibleRowRecords() {
+    const rows = transformedRows();
+    if (!searchQuery) return rows;
+    const searchable = effectiveColumns(rows);
+    return rows.filter((row) => {
+      const values = searchable.length ? searchable.map((column) => row.values[column.sourceIndex]) : row.values;
+      return values.join('\n').toLocaleLowerCase().includes(searchQuery);
+    });
+  }
+
+  function selectedEffectiveCount(rows = transformedRows()) {
+    return rows.reduce((count, row) => count + (selectedRows.has(row.sourceRowIndex) ? 1 : 0), 0);
   }
 
   function setCheckboxState(checkbox, checked, indeterminate = false) {
@@ -247,20 +319,21 @@
     preview.append(empty);
   }
 
-  function updateCounters(visibleIndexes) {
+  function updateCounters(visibleRows, allRows, shownColumns, totalEffectiveColumns) {
     if (!editor) return;
     const count = editor.querySelector('[data-table-count]');
     const selection = editor.querySelector('[data-selection-count]');
-    const totalRows = snapshot.rows.length;
-    const shownColumns = visibleColumns().length;
-    const totalColumns = columns.length;
-    const columnText = shownColumns === totalColumns ? `${shownColumns} columns` : `${shownColumns} of ${totalColumns} columns`;
-    if (count) {
-      count.textContent = searchQuery && visibleIndexes.length !== totalRows
-        ? `${visibleIndexes.length} of ${totalRows} rows × ${columnText}`
-        : `${totalRows} rows × ${columnText}`;
+    const rowText = searchQuery && visibleRows.length !== allRows.length
+      ? `${visibleRows.length} of ${allRows.length} rows`
+      : `${allRows.length} rows`;
+    const columnText = shownColumns.length === totalEffectiveColumns
+      ? `${shownColumns.length} columns`
+      : `${shownColumns.length} of ${totalEffectiveColumns} columns`;
+    if (count) count.textContent = `${rowText} × ${columnText}`;
+    if (selection) {
+      const selected = selectedEffectiveCount(allRows);
+      selection.textContent = `${selected} row${selected === 1 ? '' : 's'} selected`;
     }
-    if (selection) selection.textContent = `${selectedRows.size} row${selectedRows.size === 1 ? '' : 's'} selected`;
   }
 
   function renderPreview() {
@@ -268,23 +341,31 @@
     const preview = editor.querySelector('[data-table-preview]');
     if (!preview) return;
     preview.replaceChildren();
-    const visibleIndexes = visibleRowIndexes();
-    updateCounters(visibleIndexes);
 
-    if (!snapshot.headers.length) {
+    const allRows = transformedRows();
+    const visibleRows = visibleRowRecords();
+    const effectiveSourceIndexes = effectiveColumnSourceIndexes(allRows);
+    const shownColumns = effectiveColumns(allRows);
+    updateCounters(visibleRows, allRows, shownColumns, effectiveSourceIndexes.length);
+
+    if (!capturedSnapshot.headers.length) {
       renderEmpty(preview, 'No table data found', 'TableSnap could not create a structured preview for this table.');
       return;
     }
-    const shownColumns = visibleColumns();
     if (!shownColumns.length) {
-      renderEmpty(preview, 'No columns selected', 'Enable at least one column from the Columns panel.');
+      renderEmpty(preview, 'No columns selected', 'Enable at least one non-empty column from the Columns panel.');
       return;
     }
-    if (!visibleIndexes.length) {
-      renderEmpty(preview, 'No matching rows', 'Try a different search term.');
+    if (!visibleRows.length) {
+      renderEmpty(
+        preview,
+        searchQuery ? 'No matching rows' : 'No rows remaining',
+        searchQuery ? 'Try a different search term.' : 'Adjust the cleanup options to restore rows.'
+      );
       return;
     }
 
+    const headers = transformedHeaders();
     const scroller = document.createElement('div');
     scroller.className = 'tablesnap-editor-table-scroll';
     const table = document.createElement('table');
@@ -293,24 +374,32 @@
     const headerRow = document.createElement('tr');
     const selectHead = document.createElement('th');
     selectHead.className = 'tablesnap-editor-select-cell';
+    const selectedCount = selectedEffectiveCount(allRows);
     const selectAll = createCheckbox('Select all rows', false, () => {
-      if (selectAll.checked) snapshot.rows.forEach((_, index) => selectedRows.add(index));
-      else selectedRows.clear();
+      if (selectAll.checked) allRows.forEach((row) => selectedRows.add(row.sourceRowIndex));
+      else allRows.forEach((row) => selectedRows.delete(row.sourceRowIndex));
       renderPreview();
     });
-    setCheckboxState(selectAll, selectedRows.size === snapshot.rows.length && snapshot.rows.length > 0, selectedRows.size > 0 && selectedRows.size < snapshot.rows.length);
+    setCheckboxState(
+      selectAll,
+      selectedCount === allRows.length && allRows.length > 0,
+      selectedCount > 0 && selectedCount < allRows.length
+    );
     selectHead.append(selectAll);
     headerRow.append(selectHead);
 
     shownColumns.forEach((column) => {
       const th = document.createElement('th');
-      th.textContent = column.label;
+      th.textContent = column.label === capturedSnapshot.headers[column.sourceIndex]
+        ? (headers[column.sourceIndex] || column.label)
+        : column.label;
       headerRow.append(th);
     });
     thead.append(headerRow);
 
     const tbody = document.createElement('tbody');
-    visibleIndexes.forEach((rowIndex) => {
+    visibleRows.forEach((rowRecord) => {
+      const rowIndex = rowRecord.sourceRowIndex;
       const tr = document.createElement('tr');
       if (selectedRows.has(rowIndex)) tr.dataset.selected = 'true';
       const selectCell = document.createElement('td');
@@ -323,7 +412,7 @@
       selectCell.append(checkbox);
       tr.append(selectCell);
       shownColumns.forEach((column) => {
-        const value = snapshot.rows[rowIndex][column.sourceIndex] ?? '';
+        const value = rowRecord.values[column.sourceIndex] ?? '';
         const td = document.createElement('td');
         td.textContent = value;
         td.title = value.replace(/\s+/g, ' ').trim();
@@ -359,11 +448,13 @@
     if (!panel) return;
     panel.replaceChildren();
 
+    const effective = new Set(effectiveColumnSourceIndexes());
     columns.forEach((column) => {
       const row = document.createElement('div');
       row.className = 'tablesnap-editor-column-row';
       row.dataset.columnId = column.id;
       if (!column.visible) row.dataset.hidden = 'true';
+      if (!effective.has(column.sourceIndex)) row.dataset.cleaned = 'true';
       if (draggingColumnId === column.id) row.dataset.dragging = 'true';
 
       const drag = document.createElement('span');
@@ -392,7 +483,6 @@
 
       const body = document.createElement('div');
       body.className = 'tablesnap-editor-column-body';
-
       if (editingColumnId === column.id) {
         row.dataset.editing = 'true';
         const input = document.createElement('input');
@@ -460,6 +550,54 @@
     });
   }
 
+  function createCleanupOption(key, title, description) {
+    const label = document.createElement('label');
+    label.className = 'tablesnap-editor-cleanup-option';
+    label.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;cursor:pointer';
+    const copy = document.createElement('span');
+    copy.className = 'tablesnap-editor-cleanup-copy';
+    copy.style.cssText = 'min-width:0;display:block';
+    const strong = document.createElement('strong');
+    strong.textContent = title;
+    strong.style.cssText = 'display:block;font-size:10.5px;font-weight:600;color:#404040';
+    const small = document.createElement('span');
+    small.textContent = description;
+    small.style.cssText = 'display:block;margin-top:2px;font-size:8.5px;line-height:1.25;color:#90959b';
+    copy.append(strong, small);
+
+    const input = createCheckbox(title, Boolean(cleanup[key]), () => {
+      cleanup[key] = input.checked;
+      renderCleanupPanel();
+      renderColumnsPanel();
+      renderPreview();
+    });
+    label.append(copy, input);
+    return label;
+  }
+
+  function renderCleanupPanel() {
+    if (!editor) return;
+    const panel = editor.querySelector('[data-cleanup-panel]');
+    const reset = editor.querySelector('[data-cleanup-reset]');
+    if (!panel) return;
+    panel.style.cssText = 'display:grid;margin-top:8px';
+    panel.replaceChildren(
+      createCleanupOption('trimWhitespace', 'Trim whitespace', 'Remove spaces at the start and end'),
+      createCleanupOption('collapseSpaces', 'Collapse extra spaces', 'Turn repeated spaces into one'),
+      createCleanupOption('normalizeLineBreaks', 'Normalize line breaks', 'Use consistent line breaks in cells'),
+      createCleanupOption('removeEmptyRows', 'Remove empty rows', 'Drop rows with no values'),
+      createCleanupOption('removeEmptyColumns', 'Remove empty columns', 'Drop columns with no row values'),
+      createCleanupOption('removeDuplicateRows', 'Remove duplicate rows', 'Keep the first identical row')
+    );
+    if (reset) {
+      reset.disabled = !Object.values(cleanup).some(Boolean);
+      reset.style.cssText = 'margin:0;padding:3px 6px;border:0;background:transparent;font-size:9px;font-weight:600;color:var(--ts-accent,#2563eb);cursor:pointer';
+      if (reset.disabled) reset.style.opacity = '.35';
+    }
+    const head = editor.querySelector('.tablesnap-editor-cleanup-head');
+    if (head) head.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px';
+  }
+
   function prepareSourceCardHost(card) {
     card.replaceChildren();
     card.classList.add('tablesnap-editor-source-host');
@@ -487,9 +625,10 @@
     }
     if (editor?.isConnected) return;
 
-    snapshot = normalizedSnapshot(parseSourceTarget());
-    selectedRows = new Set(snapshot.rows.map((_, index) => index));
+    capturedSnapshot = normalizedSnapshot(parseSourceTarget());
+    selectedRows = new Set(capturedSnapshot.rows.map((_, index) => index));
     searchQuery = '';
+    cleanup = { ...DEFAULT_CLEANUP };
     initializeColumns();
 
     prepareSourceCardHost(sourceCard);
@@ -497,6 +636,7 @@
     sourceCard.append(editor);
     document.documentElement.classList.add('tablesnap-editor-open');
     renderColumnsPanel();
+    renderCleanupPanel();
     renderPreview();
     requestAnimationFrame(() => editor?.classList.add('is-open'));
     editor.querySelector('[data-table-search]')?.focus({ preventScroll: true });
