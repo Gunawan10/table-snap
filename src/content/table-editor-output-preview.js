@@ -112,7 +112,7 @@
 
   function tokenizedJson(code, query) {
     const fragment = document.createDocumentFragment();
-    const tokenPattern = /"(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\btrue\b|\bfalse\b|\bnull\b/g;
+    const tokenPattern = /\"(?:\\.|[^\"\\])*\"(?=\s*:)|\"(?:\\.|[^\"\\])*\"|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\btrue\b|\bfalse\b|\bnull\b/g;
     let lastIndex = 0;
     let match;
 
@@ -175,12 +175,12 @@
     if (isCode) {
       button.setAttribute('aria-label', 'Back to table preview');
       button.title = 'Back to table';
-      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m11.5 5-5 5 5 5M7 10h7"/></svg>';
+      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="4" width="13" height="12" rx="1.5"/><path d="M3.5 8h13M8 4v12M12.5 4v12"/></svg>';
       button.addEventListener('click', () => showTable(editor));
     } else {
       button.setAttribute('aria-label', 'View JSON preview');
       button.title = 'View JSON';
-      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4a2 2 0 0 0-2 2v2.5C5 9.8 4.4 10.7 3.5 11c.9.3 1.5 1.2 1.5 2.5V16a2 2 0 0 0 2 2M13 4a2 2 0 0 1 2 2v2.5c0 1.3.6 2.2 1.5 2.5-.9.3-1.5 1.2-1.5 2.5V16a2 2 0 0 1-2 2"/></svg>';
+      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5a2 2 0 0 0-2 2V8c0 1.4-.6 2.3-1.7 2.5 1.1.2 1.7 1.1 1.7 2.5v2.5a2 2 0 0 0 2 2M13 3.5a2 2 0 0 1 2 2V8c0 1.4.6 2.3 1.7 2.5-1.1.2-1.7 1.1-1.7 2.5v2.5a2 2 0 0 1-2 2"/></svg>';
       button.addEventListener('click', () => {
         const latest = readCurrentTable(editor);
         if (latest) cachedTable = latest;
