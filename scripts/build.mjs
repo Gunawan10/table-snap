@@ -61,6 +61,7 @@ await cp('src/content/table-editor-foundation.js', 'dist/content/table-editor-fo
 await cp('src/content/table-editor-content-file-settings.js', 'dist/content/table-editor-content-file-settings.js');
 await cp('src/content/table-editor-format-settings.js', 'dist/content/table-editor-format-settings.js');
 await cp('src/content/table-editor-accordion.js', 'dist/content/table-editor-accordion.js');
+await cp('src/content/table-editor-backdrop-guard.js', 'dist/content/table-editor-backdrop-guard.js');
 
 await build({
   entryPoints: ['src/background/service-worker.js'],
