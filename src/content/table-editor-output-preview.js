@@ -180,7 +180,7 @@
     } else {
       button.setAttribute('aria-label', 'View JSON preview');
       button.title = 'View JSON';
-      button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3.5a2 2 0 0 0-2 2V8c0 1.4-.6 2.3-1.7 2.5 1.1.2 1.7 1.1 1.7 2.5v2.5a2 2 0 0 0 2 2M13 3.5a2 2 0 0 1 2 2V8c0 1.4.6 2.3 1.7 2.5-1.1.2-1.7 1.1-1.7 2.5v2.5a2 2 0 0 1-2 2"/></svg>';
+      button.innerHTML = '<span class="tablesnap-editor-json-toggle-glyph" aria-hidden="true">{ }</span>';
       button.addEventListener('click', () => {
         const latest = readCurrentTable(editor);
         if (latest) cachedTable = latest;
