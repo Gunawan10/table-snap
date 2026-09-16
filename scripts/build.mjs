@@ -82,6 +82,7 @@ await cp('src/content/table-editor-format-settings.css', 'dist/content/table-edi
 await cp('src/content/table-editor-accordion.css', 'dist/content/table-editor-accordion.css');
 await cp('src/content/table-editor-spacing.css', 'dist/content/table-editor-spacing.css');
 await cp('src/content/table-editor-typography.css', 'dist/content/table-editor-typography.css');
+await cp('src/content/table-editor-brand.css', 'dist/content/table-editor-brand.css');
 await cp('src/popup/popup.html', 'dist/popup/popup.html');
 await cp('src/popup/popup.css', 'dist/popup/popup.css');
 await cp('src/popup/popup.js', 'dist/popup/popup.js');
