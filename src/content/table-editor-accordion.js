@@ -18,20 +18,27 @@
     const title = sectionTitle(section);
     sectionState.set(title, expanded);
     section.dataset.accordionExpanded = String(expanded);
-    const trigger = section.querySelector(':scope > .tablesnap-editor-section-head [data-accordion-trigger]');
-    trigger?.setAttribute('aria-expanded', String(expanded));
+    section.querySelector(':scope > .tablesnap-editor-section-head [data-accordion-trigger]')
+      ?.setAttribute('aria-expanded', String(expanded));
+    section.querySelector(':scope > .tablesnap-editor-section-head [data-accordion-chevron]')
+      ?.setAttribute('aria-label', expanded ? `Collapse ${title}` : `Expand ${title}`);
     sectionBodyNodes(section).forEach((node) => {
       node.hidden = !expanded;
     });
   }
 
   function syncSections(editor) {
-    const sections = [...editor.querySelectorAll(SECTION_SELECTOR)];
-    sections.forEach((section) => {
+    [...editor.querySelectorAll(SECTION_SELECTOR)].forEach((section) => {
       const title = sectionTitle(section);
       const expanded = sectionState.has(title) ? sectionState.get(title) : DEFAULT_EXPANDED.has(title);
       setSectionExpanded(section, expanded);
     });
+  }
+
+  function toggleSection(section) {
+    const expanded = section.dataset.accordionExpanded === 'true';
+    setSectionExpanded(section, !expanded);
+    if (!expanded) section.scrollIntoView({ block: 'nearest' });
   }
 
   function buildTrigger(section, head) {
@@ -55,38 +62,30 @@
     const description = document.createElement('span');
     description.textContent = descriptionText;
     copy.append(strong, description);
-
     trigger.append(copy);
 
     const actions = document.createElement('span');
     actions.className = 'tablesnap-editor-accordion-actions';
 
     if (reset) {
-      reset.addEventListener('click', (event) => {
-        event.stopPropagation();
-      });
+      reset.addEventListener('click', (event) => event.stopPropagation());
       actions.append(reset);
     }
 
-    const chevron = document.createElement('svg');
-    chevron.className = 'tablesnap-editor-accordion-chevron';
-    chevron.setAttribute('viewBox', '0 0 20 20');
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.innerHTML = '<path d="m6 8 4 4 4-4"/>';
-    actions.append(chevron);
+    const chevronButton = document.createElement('button');
+    chevronButton.type = 'button';
+    chevronButton.className = 'tablesnap-editor-accordion-chevron-button';
+    chevronButton.dataset.accordionChevron = 'true';
+    chevronButton.setAttribute('aria-label', `Collapse ${title}`);
+    chevronButton.innerHTML = '<svg class="tablesnap-editor-accordion-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="M6.5 8.25 10 11.75l3.5-3.5"/></svg>';
+    chevronButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      toggleSection(section);
+    });
+    actions.append(chevronButton);
 
     head.replaceChildren(trigger, actions);
-
-    trigger.addEventListener('click', () => {
-      const expanded = section.dataset.accordionExpanded === 'true';
-      setSectionExpanded(section, !expanded);
-      if (!expanded) section.scrollIntoView({ block: 'nearest' });
-    });
-
-    actions.addEventListener('click', (event) => {
-      if (event.target.closest('[data-cleanup-reset]')) return;
-      trigger.click();
-    });
+    trigger.addEventListener('click', () => toggleSection(section));
   }
 
   function setupSection(section) {
