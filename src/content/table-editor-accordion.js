@@ -1,7 +1,7 @@
 (() => {
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
   const SECTION_SELECTOR = '.tablesnap-editor-sidebar > .tablesnap-editor-section';
-  const DEFAULT_EXPANDED = new Set(['Columns', 'Data Cleanup', 'Content', 'File Settings']);
+  const DEFAULT_EXPANDED = new Set(['Columns']);
 
   let activeEditor = null;
   const sectionState = new Map();
