@@ -39,7 +39,8 @@
         "content/card-position-fix.js",
         "content/export-error-state.js",
         "content/table-editor-foundation.js",
-        "content/table-editor-content-file-settings.js"
+        "content/table-editor-content-file-settings.js",
+        "content/table-editor-accordion.js"
       ],
       "css": [
         "content/content.css",
@@ -47,7 +48,8 @@
         "content/tabler-format-icons.css",
         "content/export-action-state.css",
         "content/save-loading.css",
-        "content/table-editor-foundation.css"
+        "content/table-editor-foundation.css",
+        "content/table-editor-accordion.css"
       ],
       "run_at": "document_idle"
     }
