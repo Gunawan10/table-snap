@@ -1,0 +1,69 @@
+name: Roadmap task
+description: Create a dependency-aware implementation task
+title: "[Blocked] TS-### — "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Describe one user or engineering outcome and why it matters.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: List concrete behavior, boundaries, and compatibility requirements.
+      placeholder: |
+        - Included behavior
+        - Important boundary
+        - Compatibility requirement
+    validations:
+      required: true
+
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: List related work intentionally deferred.
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Include observable behavior, edge cases, regression coverage, npm test, and npm run build.
+      placeholder: |
+        - [ ] Observable outcome
+        - [ ] Regression test
+        - [ ] npm test passes
+        - [ ] npm run build passes
+    validations:
+      required: true
+
+  - type: input
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Enter task IDs or None.
+      placeholder: TS-### or None
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk and rollback
+      description: Describe the main regression risk and safe rollback boundary.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: autonomous_execution
+    attributes:
+      label: Autonomous execution
+      options:
+        - Codex may merge after every acceptance criterion passes
+        - Human browser QA is required before merge
+    validations:
+      required: true
