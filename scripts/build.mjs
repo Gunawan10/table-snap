@@ -59,6 +59,7 @@ await cp('src/content/tabler-format-icons.js', 'dist/content/tabler-format-icons
 await cp('src/content/export-action-state.js', 'dist/content/export-action-state.js');
 await cp('src/content/table-editor-foundation.js', 'dist/content/table-editor-foundation.js');
 await cp('src/content/table-editor-content-file-settings.js', 'dist/content/table-editor-content-file-settings.js');
+await cp('src/content/table-editor-format-settings.js', 'dist/content/table-editor-format-settings.js');
 await cp('src/content/table-editor-accordion.js', 'dist/content/table-editor-accordion.js');
 
 await build({
@@ -76,6 +77,7 @@ await cp('src/content/tabler-format-icons.css', 'dist/content/tabler-format-icon
 await cp('src/content/export-action-state.css', 'dist/content/export-action-state.css');
 await cp('src/content/save-loading.css', 'dist/content/save-loading.css');
 await cp('src/content/table-editor-foundation.css', 'dist/content/table-editor-foundation.css');
+await cp('src/content/table-editor-format-settings.css', 'dist/content/table-editor-format-settings.css');
 await cp('src/content/table-editor-accordion.css', 'dist/content/table-editor-accordion.css');
 await cp('src/popup/popup.html', 'dist/popup/popup.html');
 await cp('src/popup/popup.css', 'dist/popup/popup.css');
