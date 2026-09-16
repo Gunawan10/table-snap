@@ -2,7 +2,7 @@
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
   const FORMATS = [
     { id: 'csv', label: 'CSV', extension: 'csv' },
-    { id: 'xlsx', label: 'XLSX', extension: 'xlsx' },
+    { id: 'xlsx', label: 'Excel', extension: 'xlsx' },
     { id: 'json', label: 'JSON', extension: 'json' },
     { id: 'markdown', label: 'Markdown', extension: 'md' },
     { id: 'png', label: 'PNG', extension: 'png' },
@@ -169,26 +169,56 @@
     }
   }
 
+  function updateFormatControl(label, meta) {
+    const icon = label.querySelector('[data-format-icon]');
+    if (icon) {
+      icon.dataset.format = meta.id;
+      icon.setAttribute('aria-label', `${meta.label} format`);
+    }
+  }
+
   function setupFormatSelect(editor) {
-    const select = editor.querySelector('.tablesnap-editor-format select');
-    if (!select) return;
+    const label = editor.querySelector('.tablesnap-editor-format');
+    const select = label?.querySelector('select');
+    if (!label || !select) return;
+
     select.disabled = false;
     select.replaceChildren();
     FORMATS.forEach((item) => {
       const option = document.createElement('option');
       option.value = item.id;
-      option.textContent = item.label;
+      option.textContent = `${item.label} (.${item.extension})`;
       option.selected = item.id === format;
       select.append(option);
     });
 
-    select.addEventListener('change', () => {
+    if (!label.querySelector('.tablesnap-editor-format-control')) {
+      const control = document.createElement('span');
+      control.className = 'tablesnap-editor-format-control';
+      const icon = document.createElement('span');
+      icon.className = 'tablesnap-editor-format-icon';
+      icon.dataset.formatIcon = 'true';
+      icon.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.75h6.5L15 6.25V17H5z"/><path d="M11.5 2.75v3.5H15M7.5 9h5M7.5 11.5h5M7.5 14h3.5"/></svg>';
+      const chevron = document.createElement('svg');
+      chevron.className = 'tablesnap-editor-format-chevron';
+      chevron.setAttribute('viewBox', '0 0 20 20');
+      chevron.setAttribute('aria-hidden', 'true');
+      chevron.innerHTML = '<path d="m6.5 8 3.5 3.5L13.5 8"/>';
+      control.append(icon, select, chevron);
+      label.append(control);
+    }
+
+    const sync = () => {
       format = select.value;
       const meta = FORMATS.find((item) => item.id === format) || FORMATS[0];
+      updateFormatControl(label, meta);
       window.__TableSnapEditorSettings?.setExtension?.(meta.extension);
       renderFormatPanel(editor);
       dispatchChange();
-    });
+    };
+
+    updateFormatControl(label, FORMATS.find((item) => item.id === format) || FORMATS[0]);
+    select.addEventListener('change', sync);
   }
 
   function setupEditor(editor) {
