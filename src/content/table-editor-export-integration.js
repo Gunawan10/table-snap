@@ -303,11 +303,13 @@ function updateActionState(editor = activeEditor) {
   const copy = editor.querySelector('.tablesnap-editor-secondary');
   const exportButton = editor.querySelector('.tablesnap-editor-primary');
   if (copy) {
-    copy.disabled = busy || !hasRows || NON_COPYABLE.has(format);
+    const shouldDisable = busy || !hasRows || NON_COPYABLE.has(format);
+    if (copy.disabled !== shouldDisable) copy.disabled = shouldDisable;
     copy.title = NON_COPYABLE.has(format) ? `${format.toUpperCase()} cannot be copied to the clipboard` : 'Copy selected table data';
   }
   if (exportButton) {
-    exportButton.disabled = busy || !hasRows;
+    const shouldDisable = busy || !hasRows;
+    if (exportButton.disabled !== shouldDisable) exportButton.disabled = shouldDisable;
     exportButton.title = 'Export selected table data';
   }
 }
@@ -370,8 +372,13 @@ function setupEditor(editor) {
   });
 
   editorObserver?.disconnect();
-  editorObserver = new MutationObserver(() => updateActionState(editor));
-  editorObserver.observe(editor, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-active', 'disabled'] });
+  const selection = editor.querySelector('[data-selection-count]');
+  if (selection) {
+    editorObserver = new MutationObserver(() => updateActionState(editor));
+    editorObserver.observe(selection, { attributes: true, attributeFilter: ['data-active'] });
+  } else {
+    editorObserver = null;
+  }
   updateActionState(editor);
 }
 
