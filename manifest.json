@@ -42,6 +42,7 @@
         "content/table-editor-content-file-settings.js",
         "content/table-editor-format-settings.js",
         "content/table-editor-output-preview.js",
+        "content/table-editor-export-integration.js",
         "content/table-editor-accordion.js",
         "content/table-editor-backdrop-guard.js"
       ],
