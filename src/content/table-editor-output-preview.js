@@ -1,9 +1,10 @@
 (() => {
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
-  const CODE_FORMATS = new Set(['json', 'sql']);
+  const CODE_FORMATS = new Set(['json', 'sql', 'ndjson']);
   const FORMAT_META = {
     json: { label: 'JSON', search: 'Search in JSON...' },
-    sql: { label: 'SQL', search: 'Search in SQL...' }
+    sql: { label: 'SQL', search: 'Search in SQL...' },
+    ndjson: { label: 'NDJSON', search: 'Search in NDJSON...' }
   };
 
   let activeEditor = null;
@@ -86,6 +87,24 @@
     return JSON.stringify(payload, null, options.prettyPrint === false ? 0 : (Number(options.indentation) || 2));
   }
 
+  function serializeNdjson(snapshot) {
+    const options = formatOptions('ndjson');
+    const settings = editorSettings();
+    const useObjects = options.headersAsKeys !== false && settings.includeHeaders !== false;
+    const keys = uniqueNames(snapshot.headers);
+
+    return snapshot.rows.map((row) => {
+      if (!useObjects) return JSON.stringify(snapshot.headers.map((_, index) => row[index] ?? ''));
+      const item = {};
+      keys.forEach((key, index) => {
+        const value = row[index] ?? '';
+        if (options.skipEmptyValues === true && value === '') return;
+        item[key] = value;
+      });
+      return JSON.stringify(item);
+    }).join('\n');
+  }
+
   function sqlIdentifierQuote(dialect) {
     return dialect === 'mysql' ? '`' : '"';
   }
@@ -121,6 +140,7 @@
 
   function serializeCode(format, snapshot) {
     if (format === 'sql') return serializeSql(snapshot);
+    if (format === 'ndjson') return serializeNdjson(snapshot);
     return serializeJson(snapshot);
   }
 
@@ -231,6 +251,9 @@
   function codeTargetIcon(format) {
     if (format === 'sql') {
       return '<svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="5" rx="5.5" ry="2.5"/><path d="M4.5 5v5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V5M4.5 10v5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-5"/></svg>';
+    }
+    if (format === 'ndjson') {
+      return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6l4 4v11H5zM11 2.5v4h4"/><path d="M7.5 10h5M7.5 12.75h5M7.5 15.5h3.25"/></svg>';
     }
     return '<span class="tablesnap-editor-json-toggle-glyph" aria-hidden="true">{ }</span>';
   }
