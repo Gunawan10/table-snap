@@ -292,6 +292,25 @@ function flashButton(button, text, duration = 850) {
   }, duration);
 }
 
+function setExportLoading(button, loading) {
+  if (!button) return;
+  const label = buttonLabel(button);
+  const icon = button.querySelector('.tablesnap-editor-action-icon');
+
+  button.dataset.loading = String(loading);
+  if (label) label.textContent = loading ? 'Exporting...' : 'Export';
+  if (!icon) return;
+
+  if (loading) {
+    if (!icon.dataset.idleMarkup) icon.dataset.idleMarkup = icon.innerHTML;
+    icon.classList.add('is-loading');
+    icon.innerHTML = '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 8 8"/>';
+  } else {
+    icon.classList.remove('is-loading');
+    if (icon.dataset.idleMarkup) icon.innerHTML = icon.dataset.idleMarkup;
+  }
+}
+
 function hasSelectedRows(editor) {
   return editor?.querySelector('[data-selection-count]')?.dataset.active === 'true';
 }
@@ -310,7 +329,7 @@ function updateActionState(editor = activeEditor) {
   if (exportButton) {
     const shouldDisable = busy || !hasRows;
     if (exportButton.disabled !== shouldDisable) exportButton.disabled = shouldDisable;
-    exportButton.title = 'Export selected table data';
+    exportButton.title = busy ? 'Export in progress' : 'Export selected table data';
   }
 }
 
@@ -336,20 +355,23 @@ async function handleCopy(editor, button) {
 async function handleExport(editor, button) {
   if (busy || button.disabled) return;
   busy = true;
+  setExportLoading(button, true);
   updateActionState(editor);
+  let result = 'Exported';
   try {
     const format = currentFormat();
     const snapshot = captureEditorSnapshot(editor);
     if (!snapshot.headers.length || !snapshot.rows.length) throw new Error('No selected table data');
     const blob = await createExportBlob(format, snapshot);
     downloadBlob(blob, outputFilename(format));
-    flashButton(button, 'Exported');
   } catch (error) {
+    result = 'Export failed';
     console.error('[TableSnap] Editor export failed:', error);
-    flashButton(button, 'Export failed', 1100);
   } finally {
+    setExportLoading(button, false);
     busy = false;
     updateActionState(editor);
+    flashButton(button, result, result === 'Exported' ? 850 : 1100);
   }
 }
 
