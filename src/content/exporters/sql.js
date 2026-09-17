@@ -19,13 +19,19 @@ function uniqueIdentifiers(headers) {
   });
 }
 
-function quoteIdentifier(value) {
-  return `\`${String(value).replace(/`/g, '``')}\``;
+function identifierQuote(dialect) {
+  return dialect === 'mysql' ? '`' : '"';
 }
 
-function sqlValue(value) {
+function quoteIdentifier(value, options) {
+  if (options.quoteIdentifiers === false) return String(value);
+  const quote = identifierQuote(options.dialect || 'mysql');
+  return `${quote}${String(value).replaceAll(quote, quote + quote)}${quote}`;
+}
+
+function sqlValue(value, options) {
   const text = String(value ?? '');
-  if (text === '') return "''";
+  if (text === '' && options.nullEmptyValues === true) return 'NULL';
   return `'${text.replace(/'/g, "''")}'`;
 }
 
@@ -37,12 +43,17 @@ export const sqlExporter = {
   copyable: true,
   serialize({ headers, rows }, options = {}) {
     const columns = uniqueIdentifiers(headers);
-    const tableName = normalizeIdentifier(options.tableName || 'table_data', 0);
-    const columnList = columns.map(quoteIdentifier).join(', ');
+    const table = normalizeIdentifier(options.tableName || 'table_data', 0);
+    const tableName = quoteIdentifier(table, options);
+    const columnList = options.includeColumnNames === false
+      ? ''
+      : ` (${columns.map((column) => quoteIdentifier(column, options)).join(', ')})`;
+    const valueGroups = rows.map((row) => `(${columns.map((_, index) => sqlValue(row[index] ?? '', options)).join(', ')})`);
 
-    return rows.map((row) => {
-      const values = columns.map((_, index) => sqlValue(row[index] ?? '')).join(', ');
-      return `INSERT INTO ${quoteIdentifier(tableName)} (${columnList}) VALUES (${values});`;
-    }).join('\n');
+    if (!valueGroups.length) return '';
+    if (options.multiRowInsert === true) {
+      return `INSERT INTO ${tableName}${columnList} VALUES\n${valueGroups.map((group, index) => `  ${group}${index === valueGroups.length - 1 ? ';' : ','}`).join('\n')}`;
+    }
+    return valueGroups.map((values) => `INSERT INTO ${tableName}${columnList} VALUES ${values};`).join('\n');
   }
 };
