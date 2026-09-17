@@ -48,6 +48,14 @@ await build({
   target: 'chrome120'
 });
 
+await build({
+  entryPoints: ['src/content/table-editor-export-integration.js'],
+  outfile: 'dist/content/table-editor-export-integration.js',
+  bundle: true,
+  minify: true,
+  target: 'chrome120'
+});
+
 await cp('src/content/extension-state.js', 'dist/content/extension-state.js');
 await cp('src/content/semantic-cell-content.js', 'dist/content/semantic-cell-content.js');
 await cp('src/content/native-colspan-fix.js', 'dist/content/native-colspan-fix.js');
