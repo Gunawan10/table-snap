@@ -3,6 +3,15 @@ import { getExporter, serializeExport } from './exporters/index.js';
 
 const EDITOR_SELECTOR = '.tablesnap-table-editor';
 const NON_COPYABLE = new Set(['xlsx', 'png', 'pdf']);
+const DEFAULT_EXPORT_OPTIONS = Object.freeze({
+  csvDelimiter: ',',
+  imageScale: 2,
+  pdfOrientation: 'auto',
+  pdfPageSize: 'a4',
+  xlsxAutoColumnWidth: true,
+  xlsxWrapText: true,
+  xlsxAutoFilter: true
+});
 const FORMAT_META = {
   csv: { extension: 'csv', mimeType: 'text/csv;charset=utf-8' },
   xlsx: { extension: 'xlsx' },
@@ -19,6 +28,7 @@ const FORMAT_META = {
 let activeEditor = null;
 let editorObserver = null;
 let busy = false;
+let cachedExportOptions = { ...DEFAULT_EXPORT_OPTIONS };
 
 function currentFormat() {
   return window.__TableSnapEditorFormatSettings?.getFormat?.() || 'csv';
@@ -125,15 +135,14 @@ function serializeMarkdown(snapshot, includeHeaders) {
 }
 
 async function storageExportOptions() {
-  return chrome.storage.local.get({
-    csvDelimiter: ',',
-    imageScale: 2,
-    pdfOrientation: 'auto',
-    pdfPageSize: 'a4',
-    xlsxAutoColumnWidth: true,
-    xlsxWrapText: true,
-    xlsxAutoFilter: true
-  });
+  try {
+    const stored = await chrome.storage.local.get(DEFAULT_EXPORT_OPTIONS);
+    cachedExportOptions = { ...cachedExportOptions, ...stored };
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    if (!message.includes('Extension context invalidated')) throw error;
+  }
+  return { ...cachedExportOptions };
 }
 
 async function exporterOptions(format) {
