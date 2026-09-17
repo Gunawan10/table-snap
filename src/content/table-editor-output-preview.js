@@ -1,6 +1,10 @@
 (() => {
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
-  const CODE_FORMAT = 'json';
+  const CODE_FORMATS = new Set(['json', 'sql']);
+  const FORMAT_META = {
+    json: { label: 'JSON', search: 'Search in JSON...' },
+    sql: { label: 'SQL', search: 'Search in SQL...' }
+  };
 
   let activeEditor = null;
   let previewObserver = null;
@@ -14,13 +18,8 @@
     return window.__TableSnapEditorFormatSettings?.getFormat?.() || 'csv';
   }
 
-  function jsonOptions() {
-    return window.__TableSnapEditorFormatSettings?.getOptions?.('json') || {
-      prettyPrint: true,
-      indentation: 2,
-      headersAsKeys: true,
-      includeEmptyValues: true
-    };
+  function formatOptions(format) {
+    return window.__TableSnapEditorFormatSettings?.getOptions?.(format) || {};
   }
 
   function editorSettings() {
@@ -39,10 +38,10 @@
     return normalized || fallback;
   }
 
-  function uniqueKeys(headers) {
+  function uniqueNames(headers, fallbackPrefix = 'column') {
     const seen = new Map();
     return headers.map((header, index) => {
-      const base = toSnakeCase(header, `column_${index + 1}`);
+      const base = toSnakeCase(header, `${fallbackPrefix}_${index + 1}`);
       const count = seen.get(base) || 0;
       seen.set(base, count + 1);
       return count === 0 ? base : `${base}_${count + 1}`;
@@ -64,13 +63,13 @@
   }
 
   function serializeJson(snapshot) {
-    const options = jsonOptions();
+    const options = formatOptions('json');
     const settings = editorSettings();
     const useObjects = options.headersAsKeys !== false && settings.includeHeaders !== false;
     let payload;
 
     if (useObjects) {
-      const keys = uniqueKeys(snapshot.headers);
+      const keys = uniqueNames(snapshot.headers);
       payload = snapshot.rows.map((row) => {
         const item = {};
         keys.forEach((key, index) => {
@@ -85,6 +84,44 @@
     }
 
     return JSON.stringify(payload, null, options.prettyPrint === false ? 0 : (Number(options.indentation) || 2));
+  }
+
+  function sqlIdentifierQuote(dialect) {
+    return dialect === 'mysql' ? '`' : '"';
+  }
+
+  function quoteSqlIdentifier(identifier, options) {
+    if (options.quoteIdentifiers === false) return identifier;
+    const quote = sqlIdentifierQuote(options.dialect || 'mysql');
+    return `${quote}${String(identifier).replaceAll(quote, quote + quote)}${quote}`;
+  }
+
+  function sqlValue(value, options) {
+    const text = String(value ?? '');
+    if (text === '' && options.nullEmptyValues === true) return 'NULL';
+    return `'${text.replace(/'/g, "''")}'`;
+  }
+
+  function serializeSql(snapshot) {
+    const options = formatOptions('sql');
+    const columns = uniqueNames(snapshot.headers);
+    const table = toSnakeCase(options.tableName || 'table_data', 'table_data');
+    const tableName = quoteSqlIdentifier(table, options);
+    const columnList = options.includeColumnNames === false
+      ? ''
+      : ` (${columns.map((column) => quoteSqlIdentifier(column, options)).join(', ')})`;
+    const valueGroups = snapshot.rows.map((row) => `(${columns.map((_, index) => sqlValue(row[index] ?? '', options)).join(', ')})`);
+
+    if (!valueGroups.length) return '';
+    if (options.multiRowInsert === true) {
+      return `INSERT INTO ${tableName}${columnList} VALUES\n${valueGroups.map((group, index) => `  ${group}${index === valueGroups.length - 1 ? ';' : ','}`).join('\n')}`;
+    }
+    return valueGroups.map((values) => `INSERT INTO ${tableName}${columnList} VALUES ${values};`).join('\n');
+  }
+
+  function serializeCode(format, snapshot) {
+    if (format === 'sql') return serializeSql(snapshot);
+    return serializeJson(snapshot);
   }
 
   function appendHighlightedText(parent, text, query) {
@@ -138,6 +175,33 @@
     return fragment;
   }
 
+  function tokenizedSql(code, query) {
+    const fragment = document.createDocumentFragment();
+    const tokenPattern = /'(?:''|[^'])*'|`(?:``|[^`])*`|"(?:""|[^"])*"|\b(?:INSERT|INTO|VALUES|NULL)\b|-?\d+(?:\.\d+)?/gi;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tokenPattern.exec(code))) {
+      if (match.index > lastIndex) appendHighlightedText(fragment, code.slice(lastIndex, match.index), query);
+      const raw = match[0];
+      const token = document.createElement('span');
+      if (raw.startsWith("'")) token.className = 'tablesnap-editor-sql-string';
+      else if (raw.startsWith('`') || raw.startsWith('"')) token.className = 'tablesnap-editor-sql-identifier';
+      else if (raw.toUpperCase() === 'NULL') token.className = 'tablesnap-editor-sql-null';
+      else if (/^-?\d/.test(raw)) token.className = 'tablesnap-editor-code-number';
+      else token.className = 'tablesnap-editor-sql-keyword';
+      appendHighlightedText(token, raw, query);
+      fragment.append(token);
+      lastIndex = match.index + raw.length;
+    }
+    if (lastIndex < code.length) appendHighlightedText(fragment, code.slice(lastIndex), query);
+    return fragment;
+  }
+
+  function tokenizedCode(format, code, query) {
+    return format === 'sql' ? tokenizedSql(code, query) : tokenizedJson(code, query);
+  }
+
   function searchInput(editor) {
     return editor?.querySelector('[data-table-search]') || null;
   }
@@ -152,14 +216,23 @@
   }
 
   function setHeader(editor, isCode) {
+    const format = currentFormat();
+    const meta = FORMAT_META[format] || FORMAT_META.json;
     const title = editor.querySelector('.tablesnap-editor-preview-title-row strong');
     const count = editor.querySelector('[data-table-count]');
     const input = searchInput(editor);
-    if (title) title.textContent = isCode ? 'JSON Preview' : 'Table Preview';
-    if (input) input.placeholder = isCode ? 'Search in JSON...' : 'Search in table...';
+    if (title) title.textContent = isCode ? `${meta.label} Preview` : 'Table Preview';
+    if (input) input.placeholder = isCode ? meta.search : 'Search in table...';
     if (isCode && count) {
       count.textContent = `${cachedTable.rows.length} row${cachedTable.rows.length === 1 ? '' : 's'} × ${cachedTable.headers.length} columns`;
     }
+  }
+
+  function codeTargetIcon(format) {
+    if (format === 'sql') {
+      return '<svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="5" rx="5.5" ry="2.5"/><path d="M4.5 5v5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5V5M4.5 10v5c0 1.4 2.5 2.5 5.5 2.5s5.5-1.1 5.5-2.5v-5"/></svg>';
+    }
+    return '<span class="tablesnap-editor-json-toggle-glyph" aria-hidden="true">{ }</span>';
   }
 
   function ensurePreviewToggle(editor, isCode) {
@@ -168,10 +241,13 @@
     if (!head || !search) return;
     head.querySelectorAll('[data-output-preview-toggle]').forEach((toggle) => toggle.remove());
 
+    const format = currentFormat();
+    if (!CODE_FORMATS.has(format)) return;
+
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.outputPreviewToggle = 'true';
-    button.dataset.previewTarget = isCode ? 'table' : 'json';
+    button.dataset.previewTarget = isCode ? 'table' : format;
     button.className = 'tablesnap-editor-preview-toggle';
     if (isCode) {
       button.setAttribute('aria-label', 'Back to table preview');
@@ -179,9 +255,10 @@
       button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="4" width="13" height="12" rx="1.5"/><path d="M3.5 8h13M8 4v12M12.5 4v12"/></svg>';
       button.addEventListener('click', () => showTable(editor));
     } else {
-      button.setAttribute('aria-label', 'View JSON preview');
-      button.title = 'View JSON';
-      button.innerHTML = '<span class="tablesnap-editor-json-toggle-glyph" aria-hidden="true">{ }</span>';
+      const label = FORMAT_META[format]?.label || format.toUpperCase();
+      button.setAttribute('aria-label', `View ${label} preview`);
+      button.title = `View ${label}`;
+      button.innerHTML = codeTargetIcon(format);
       button.addEventListener('click', () => {
         const latest = readCurrentTable(editor);
         if (latest) cachedTable = latest;
@@ -195,18 +272,20 @@
   }
 
   function renderCode(editor) {
-    if (!editor?.isConnected || !codeMode || currentFormat() !== CODE_FORMAT) return;
+    const format = currentFormat();
+    if (!editor?.isConnected || !codeMode || !CODE_FORMATS.has(format)) return;
     const preview = editor.querySelector('[data-table-preview]');
     if (!preview) return;
 
     renderingCode = true;
-    const code = serializeJson(cachedTable);
+    const code = serializeCode(format, cachedTable);
     const scroller = document.createElement('div');
     scroller.className = 'tablesnap-editor-code-scroll';
+    scroller.dataset.codeFormat = format;
     const pre = document.createElement('pre');
     pre.className = 'tablesnap-editor-code-preview';
     const codeNode = document.createElement('code');
-    codeNode.append(tokenizedJson(code, codeSearch));
+    codeNode.append(tokenizedCode(format, code, codeSearch));
     pre.append(codeNode);
     scroller.append(pre);
     preview.replaceChildren(scroller);
@@ -224,8 +303,8 @@
     ensurePreviewToggle(editor, false);
   }
 
-  function enterJsonPreview(editor) {
-    if (!editor?.isConnected) return;
+  function enterCodePreview(editor) {
+    if (!editor?.isConnected || !CODE_FORMATS.has(currentFormat())) return;
     codeMode = false;
     codeSearch = '';
     setSearch(editor, '', true);
@@ -235,7 +314,7 @@
     renderCode(editor);
   }
 
-  function leaveJsonPreview(editor) {
+  function leaveCodePreview(editor) {
     if (!editor?.isConnected) return;
     codeMode = false;
     codeSearch = '';
@@ -246,16 +325,17 @@
 
   function handleFormatChange() {
     if (!activeEditor?.isConnected) return;
-    if (currentFormat() === CODE_FORMAT) {
-      if (!codeMode) enterJsonPreview(activeEditor);
+    const format = currentFormat();
+    if (CODE_FORMATS.has(format)) {
+      if (!codeMode) enterCodePreview(activeEditor);
       else renderCode(activeEditor);
     } else if (codeMode || activeEditor.querySelector('[data-output-preview-toggle]')) {
-      leaveJsonPreview(activeEditor);
+      leaveCodePreview(activeEditor);
     }
   }
 
   function handleSearch(event) {
-    if (bypassSearchInterception || !codeMode || currentFormat() !== CODE_FORMAT) return;
+    if (bypassSearchInterception || !codeMode || !CODE_FORMATS.has(currentFormat())) return;
     const input = event.target.closest?.('[data-table-search]');
     if (!input || !activeEditor?.contains(input)) return;
     event.stopImmediatePropagation();
@@ -268,7 +348,7 @@
     const preview = editor.querySelector('[data-table-preview]');
     if (!preview) return;
     previewObserver = new MutationObserver(() => {
-      if (renderingCode || !codeMode || currentFormat() !== CODE_FORMAT) return;
+      if (renderingCode || !codeMode || !CODE_FORMATS.has(currentFormat())) return;
       const snapshot = readCurrentTable(editor);
       if (!snapshot) return;
       cachedTable = snapshot;
@@ -285,7 +365,7 @@
     codeMode = false;
     codeSearch = '';
     observePreview(editor);
-    if (currentFormat() === CODE_FORMAT) enterJsonPreview(editor);
+    if (CODE_FORMATS.has(currentFormat())) enterCodePreview(editor);
   }
 
   function scan() {
@@ -303,7 +383,7 @@
 
   document.addEventListener('tablesnap:editor-format-change', handleFormatChange);
   document.addEventListener('tablesnap:editor-settings-change', () => {
-    if (codeMode && currentFormat() === CODE_FORMAT) renderCode(activeEditor);
+    if (codeMode && CODE_FORMATS.has(currentFormat())) renderCode(activeEditor);
   });
   document.addEventListener('input', handleSearch, true);
 
