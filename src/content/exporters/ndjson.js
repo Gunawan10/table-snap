@@ -24,12 +24,18 @@ export const ndjsonExporter = {
   extension: 'ndjson',
   mimeType: 'application/x-ndjson;charset=utf-8',
   copyable: true,
-  serialize({ headers, rows }) {
+  serialize({ headers, rows }, options = {}) {
+    const useObjects = options.headersAsKeys !== false && options.includeHeaders !== false;
     const keys = uniqueKeys(headers);
-    return rows
-      .map((row) => JSON.stringify(Object.fromEntries(
-        keys.map((key, index) => [key, row[index] ?? ''])
-      )))
-      .join('\n');
+    return rows.map((row) => {
+      if (!useObjects) return JSON.stringify(headers.map((_, index) => row[index] ?? ''));
+      const item = {};
+      keys.forEach((key, index) => {
+        const value = row[index] ?? '';
+        if (options.skipEmptyValues === true && value === '') return;
+        item[key] = value;
+      });
+      return JSON.stringify(item);
+    }).join('\n');
   }
 };
