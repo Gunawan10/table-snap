@@ -1,10 +1,11 @@
 (() => {
   const EDITOR_SELECTOR = '.tablesnap-table-editor';
-  const CODE_FORMATS = new Set(['json', 'sql', 'ndjson']);
+  const CODE_FORMATS = new Set(['json', 'sql', 'ndjson', 'html']);
   const FORMAT_META = {
     json: { label: 'JSON', search: 'Search in JSON...' },
     sql: { label: 'SQL', search: 'Search in SQL...' },
-    ndjson: { label: 'NDJSON', search: 'Search in NDJSON...' }
+    ndjson: { label: 'NDJSON', search: 'Search in NDJSON...' },
+    html: { label: 'HTML', search: 'Search in HTML...' }
   };
 
   let activeEditor = null;
@@ -138,9 +139,52 @@
     return valueGroups.map((values) => `INSERT INTO ${tableName}${columnList} VALUES ${values};`).join('\n');
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function serializeHtml(snapshot) {
+    const options = formatOptions('html');
+    const settings = editorSettings();
+    const includeHeaders = options.includeHeaders !== false && settings.includeHeaders !== false;
+    const semantic = options.semanticHtml !== false;
+    const minify = options.minify === true;
+    const customAttributes = String(options.tableAttributes || '').trim();
+    const basicStyle = options.basicStyling === true
+      ? 'style="border-collapse:collapse;width:100%"'
+      : '';
+    const attributes = [customAttributes, basicStyle].filter(Boolean).join(' ');
+    const openTable = attributes ? `<table ${attributes}>` : '<table>';
+
+    const headerCells = snapshot.headers.map((value) => `<th>${escapeHtml(value)}</th>`).join('');
+    const bodyRows = snapshot.rows.map((row) => `<tr>${snapshot.headers.map((_, index) => `<td>${escapeHtml(row[index] ?? '')}</td>`).join('')}</tr>`).join(minify ? '' : '\n');
+
+    let tableContent = '';
+    if (semantic) {
+      const head = includeHeaders ? `<thead><tr>${headerCells}</tr></thead>` : '';
+      const body = `<tbody>${minify ? '' : '\n'}${bodyRows}${minify ? '' : '\n'}</tbody>`;
+      tableContent = [head, body].filter(Boolean).join(minify ? '' : '\n');
+    } else {
+      const headRow = includeHeaders ? `<tr>${snapshot.headers.map((value) => `<td>${escapeHtml(value)}</td>`).join('')}</tr>` : '';
+      tableContent = [headRow, bodyRows].filter(Boolean).join(minify ? '' : '\n');
+    }
+
+    if (minify) {
+      return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>TableSnap Export</title></head><body>${openTable}${tableContent}</table></body></html>`;
+    }
+
+    return `<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8">\n  <title>TableSnap Export</title>\n</head>\n<body>\n${openTable}\n${tableContent}\n</table>\n</body>\n</html>\n`;
+  }
+
   function serializeCode(format, snapshot) {
     if (format === 'sql') return serializeSql(snapshot);
     if (format === 'ndjson') return serializeNdjson(snapshot);
+    if (format === 'html') return serializeHtml(snapshot);
     return serializeJson(snapshot);
   }
 
@@ -218,8 +262,49 @@
     return fragment;
   }
 
+  function tokenizedHtml(code, query) {
+    const fragment = document.createDocumentFragment();
+    const tokenPattern = /<!--[\s\S]*?-->|<!doctype\s+html>|<\/?[A-Za-z][^>]*>/gi;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tokenPattern.exec(code))) {
+      if (match.index > lastIndex) appendHighlightedText(fragment, code.slice(lastIndex, match.index), query);
+      const raw = match[0];
+      if (raw.startsWith('<!--')) {
+        const comment = document.createElement('span');
+        comment.className = 'tablesnap-editor-html-comment';
+        appendHighlightedText(comment, raw, query);
+        fragment.append(comment);
+      } else {
+        const tagFragment = document.createDocumentFragment();
+        const tagTokenPattern = /(<!doctype\s+html>|<\/?|\/?>)|([A-Za-z][\w:-]*)(?=\s|\/?>)|([A-Za-z_:][\w:.-]*)(?=\s*=)|("[^"]*"|'[^']*')/gi;
+        let tagLast = 0;
+        let tagMatch;
+        while ((tagMatch = tagTokenPattern.exec(raw))) {
+          if (tagMatch.index > tagLast) appendHighlightedText(tagFragment, raw.slice(tagLast, tagMatch.index), query);
+          const token = document.createElement('span');
+          if (tagMatch[1]) token.className = 'tablesnap-editor-html-punctuation';
+          else if (tagMatch[2]) token.className = 'tablesnap-editor-html-tag';
+          else if (tagMatch[3]) token.className = 'tablesnap-editor-html-attribute';
+          else token.className = 'tablesnap-editor-html-string';
+          appendHighlightedText(token, tagMatch[0], query);
+          tagFragment.append(token);
+          tagLast = tagMatch.index + tagMatch[0].length;
+        }
+        if (tagLast < raw.length) appendHighlightedText(tagFragment, raw.slice(tagLast), query);
+        fragment.append(tagFragment);
+      }
+      lastIndex = match.index + raw.length;
+    }
+    if (lastIndex < code.length) appendHighlightedText(fragment, code.slice(lastIndex), query);
+    return fragment;
+  }
+
   function tokenizedCode(format, code, query) {
-    return format === 'sql' ? tokenizedSql(code, query) : tokenizedJson(code, query);
+    if (format === 'sql') return tokenizedSql(code, query);
+    if (format === 'html') return tokenizedHtml(code, query);
+    return tokenizedJson(code, query);
   }
 
   function searchInput(editor) {
@@ -254,6 +339,9 @@
     }
     if (format === 'ndjson') {
       return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6l4 4v11H5zM11 2.5v4h4"/><path d="M7.5 10h5M7.5 12.75h5M7.5 15.5h3.25"/></svg>';
+    }
+    if (format === 'html') {
+      return '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 6-4 4 4 4M13 6l4 4-4 4M11.5 4.5l-3 11"/></svg>';
     }
     return '<span class="tablesnap-editor-json-toggle-glyph" aria-hidden="true">{ }</span>';
   }
