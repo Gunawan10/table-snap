@@ -27,11 +27,25 @@ export const jsonExporter = {
   label: 'JSON',
   extension: 'json',
   mimeType: 'application/json;charset=utf-8',
-  serialize({ headers, rows }) {
-    const keys = uniqueKeys(headers);
-    const items = rows.map((row) => Object.fromEntries(
-      keys.map((key, index) => [key, row[index] ?? ''])
-    ));
-    return JSON.stringify(items, null, 2);
+  serialize({ headers, rows }, options = {}) {
+    const useObjects = options.headersAsKeys !== false && options.includeHeaders !== false;
+    let payload;
+
+    if (useObjects) {
+      const keys = uniqueKeys(headers);
+      payload = rows.map((row) => {
+        const item = {};
+        keys.forEach((key, index) => {
+          const value = row[index] ?? '';
+          if (options.includeEmptyValues === false && value === '') return;
+          item[key] = value;
+        });
+        return item;
+      });
+    } else {
+      payload = rows.map((row) => headers.map((_, index) => row[index] ?? ''));
+    }
+
+    return JSON.stringify(payload, null, options.prettyPrint === false ? 0 : (Number(options.indentation) || 2));
   }
 };
